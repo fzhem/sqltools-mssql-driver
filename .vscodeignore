@@ -7,7 +7,9 @@ src/**
 **/.eslintrc.json
 **/*.map
 **/*.ts
+**/*.bat
 tsconfig.js
 *.js
 *.log
 .babel*
+node_modules/

@@ -63,12 +63,14 @@
   "dependencies": {
     "@sqltools/base-driver": "latest",
     "@sqltools/types": "latest",
+    "msnodesqlv8": "^4.2.1",
     "mssql": "^10.0.2",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.1",
     "@types/mssql": "^4.3.1",
+    "@types/uuid": "^9.0.8",
     "@types/vscode": "^1.72.0",
     "@vscode/vsce": "^2.26.0",
     "concurrently": "^8.2.2",

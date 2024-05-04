@@ -27,26 +27,8 @@
       "title": "Password",
       "type": "string",
       "minLength": 1
-    }
-  },
-  "properties": {
-    "connectionMethod": {
-      "title": "Connect using",
-      "type": "string",
-      "minLength": 1,
-      "enum": [
-        "Server and Port",
-        "Socket File",
-        "Connection String"
-      ],
-      "default": "Server and Port"
     },
-    "connectionTimeout": {
-      "title": "Connection Timeout",
-      "type": "integer",
-      "minimum": 0
-    },
-    "mssqlOptions": {
+    "tediousOptions": {
       "type": "object",
       "title": "MSSQL Tedious driver specific options",
       "properties": {
@@ -68,28 +50,93 @@
           "type": "boolean",
           "default": true
         },
+        "trustServerCertificate": {
+          "type": "boolean",
+          "default": false
+        },
         "tdsVersion": {
           "type": "string",
-          "enum": [
-            "7_1",
-            "7_2",
-            "7_3_A",
-            "7_3_B",
-            "7_4"
-          ]
+          "enum": ["7_1", "7_2", "7_3_A", "7_3_B", "7_4"]
+        }
+      }
+    },
+    "msnodesqlv8Options": {
+      "type": "object",
+      "title": "MSSQL Node V8 driver specific options",
+      "properties": {
+        "instanceName": {
+          "type": "string"
+        },
+        "trustedConnection": {
+          "type": "boolean",
+          "default": false
+        },
+        "useUTC": {
+          "type": "boolean",
+          "default": true
         }
       }
     }
   },
+  "properties": {
+    "dbDriver": {
+      "title": "Node.js driver",
+      "type": "string",
+      "minLength": 1,
+      "enum": ["tedious", "mssqlnodev8"],
+      "default": "mssqlnodev8"
+    },
+    "connectionMethod": {
+      "title": "Connect using",
+      "type": "string",
+      "minLength": 1
+    },
+    "connectionTimeout": {
+      "title": "Connection Timeout",
+      "type": "integer",
+      "minimum": 0,
+      "default": 15
+    }
+  },
   "dependencies": {
+    "dbDriver": {
+      "oneOf": [
+        {
+          "properties": {
+            "dbDriver": {
+              "const": "tedious"
+            },
+            "connectionMethod": {
+              "enum": [
+                "tedious Connection String",
+                "Server and Port",
+                "Socket File"
+              ],
+              "default": "Server and Port"
+            }
+          },
+          "required": ["connectionMethod"]
+        },
+        {
+          "properties": {
+            "dbDriver": {
+              "const": "mssqlnodev8"
+            },
+            "connectionMethod": {
+              "enum": ["mssqlnodev8 Connection String", "Integrated"],
+              "default": "Integrated"
+            }
+          },
+          "required": ["connectionMethod"]
+        }
+      ]
+    },
     "connectionMethod": {
       "oneOf": [
         {
           "properties": {
             "connectionMethod": {
-              "enum": [
-                "Server and Port"
-              ]
+              "enum": ["Server and Port"]
             },
             "server": {
               "title": "Server Address",
@@ -111,21 +158,17 @@
             },
             "usePassword": {
               "$ref": "#/definitions/usePassword"
+            },
+            "tediousOptions": {
+              "$ref": "#/definitions/tediousOptions"
             }
           },
-          "required": [
-            "server",
-            "port",
-            "database",
-            "username"
-          ]
+          "required": ["server", "port", "database", "username"]
         },
         {
           "properties": {
             "connectionMethod": {
-              "enum": [
-                "Socket File"
-              ]
+              "enum": ["Socket File"]
             },
             "socketPath": {
               "title": "Socket file path",
@@ -140,30 +183,69 @@
             },
             "usePassword": {
               "$ref": "#/definitions/usePassword"
+            },
+            "tediousOptions": {
+              "$ref": "#/definitions/tediousOptions"
             }
           },
-          "required": [
-            "socketPath",
-            "database",
-            "username"
-          ]
+          "required": ["socketPath", "database", "username"]
         },
         {
           "properties": {
             "connectionMethod": {
-              "enum": [
-                "Connection String"
-              ]
+              "enum": ["tedious Connection String"]
             },
-            "connectString": {
+            "tediousConnectString": {
               "title": "Connection String",
               "type": "string",
               "minLength": 1
+            },
+            "tediousOptions": {
+              "$ref": "#/definitions/tediousOptions"
             }
           },
-          "required": [
-            "connectString"
-          ]
+          "required": ["tediousConnectString"]
+        },
+        {
+          "properties": {
+            "connectionMethod": {
+              "enum": ["mssqlnodev8 Connection String"]
+            },
+            "msnodesqlv8ConnectString": {
+              "title": "Connection String",
+              "type": "string",
+              "minLength": 1
+            },
+            "msnodesqlv8Options": {
+              "$ref": "#/definitions/msnodesqlv8Options"
+            }
+          },
+          "required": ["msnodesqlv8ConnectString"]
+        },
+        {
+          "properties": {
+            "connectionMethod": {
+              "enum": ["Integrated"]
+            },
+            "odbcDriver": {
+              "title": "ODBC Driver",
+              "type": "string",
+              "minLength": 1,
+              "default": "SQL Server"
+            },
+            "server": {
+              "title": "Server",
+              "type": "string",
+              "minLength": 1
+            },
+            "database": {
+              "$ref": "#/definitions/database"
+            },
+            "msnodesqlv8Options": {
+              "$ref": "#/definitions/msnodesqlv8Options"
+            }
+          },
+          "required": ["odbcDriver", "server"]
         }
       ]
     },
@@ -172,9 +254,7 @@
         {
           "properties": {
             "usePassword": {
-              "enum": [
-                "Ask on connect"
-              ]
+              "enum": ["Ask on connect"]
             },
             "askForPassword": {
               "type": "boolean",
@@ -185,40 +265,30 @@
         {
           "properties": {
             "usePassword": {
-              "enum": [
-                "Use empty password"
-              ]
+              "enum": ["Use empty password"]
             }
           }
         },
         {
           "properties": {
             "usePassword": {
-              "enum": [
-                "Save password"
-              ]
+              "enum": ["Save password"]
             },
             "password": {
               "$ref": "#/definitions/password"
             }
           },
-          "required": [
-            "password"
-          ]
+          "required": ["password"]
         },
         {
           "properties": {
             "usePassword": {
-              "enum": [
-                "SQLTools Driver Credentials"
-              ]
+              "enum": ["SQLTools Driver Credentials"]
             }
           }
         }
       ]
     }
   },
-  "required": [
-    "connectionMethod"
-  ]
+  "required": ["connectionMethod"]
 }

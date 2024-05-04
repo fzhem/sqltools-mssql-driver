@@ -1,5 +1,5 @@
 {
-  "name": "sqltools-driver-mssql",
+  "name": "sqltools-driver-mssql-commver",
   "displayName": "SQLTools Microsoft SQL Server/Azure+",
   "description": "SQLTools Microsoft SQL Server/Azure+",
   "version": "0.5.0",

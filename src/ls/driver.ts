@@ -8,13 +8,14 @@ import {
   ContextValue,
   Arg0,
   MConnectionExplorer,
+  IBaseQueries,
 } from "@sqltools/types";
 import parse from "./parser";
 import { v4 as generateId } from "uuid";
 import reservedWordsCompletion from "./reserved-words";
 
 export default class MSSQL
-  extends AbstractDriver<MSSQLLib.ConnectionPool, any>
+  extends AbstractDriver<any, any>
   implements IConnectionDriver
 {
   mssqlLib =
@@ -22,7 +23,7 @@ export default class MSSQL
     ? import("mssql")
     : import("mssql/msnodesqlv8");
 
-  queries = Queries;
+  queries: IBaseQueries = Queries;
 
   private retryCount = 0;
   public async open(encryptOverride?: boolean) {
@@ -30,7 +31,7 @@ export default class MSSQL
       return this.connection;
     }
 
-    const { encrypt, trustServerCertificate, ...mssqlOptions }: any = this.credentials.mssqlOptions || {
+    const { encrypt, trustServerCertificate, ...tediousOptions }: any = this.credentials.tediousOptions || {
       encrypt: true,
     };
 
@@ -43,11 +44,11 @@ export default class MSSQL
 
     if (
       this.credentials.askForPassword &&
-      get(mssqlOptions, "authentication.type") &&
-      get(mssqlOptions, "authentication.options.userName")
+      get(tediousOptions, "authentication.type") &&
+      get(tediousOptions, "authentication.options.userName")
     ) {
-      mssqlOptions.authentication.options.password =
-        mssqlOptions.authentication.options.password ||
+      tediousOptions.authentication.options.password =
+      tediousOptions.authentication.options.password ||
         this.credentials.password;
       this.credentials.password = null;
     }

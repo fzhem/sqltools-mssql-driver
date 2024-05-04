@@ -264,14 +264,18 @@ export default class MSSQL
     }));
   }
 
-  public searchItems(
+  public async searchItems(
     itemType: ContextValue,
     search: string,
     extraParams: any = {}
   ): Promise<NSDatabase.SearchableItem[]> {
     switch (itemType) {
+      case ContextValue.DATABASE:
+        return this.queryResults(this.queries.searchDatabases({ search }));
       case ContextValue.TABLE:
-        return this.queryResults(this.queries.searchTables({ search }));
+        return this.queryResults(
+          this.queries.searchTables({ search, ...extraParams })
+        );
       case ContextValue.COLUMN:
         return this.queryResults(
           this.queries.searchColumns({ search, ...extraParams })

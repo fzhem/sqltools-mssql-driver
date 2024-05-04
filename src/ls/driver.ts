@@ -17,6 +17,11 @@ export default class MSSQL
   extends AbstractDriver<MSSQLLib.ConnectionPool, any>
   implements IConnectionDriver
 {
+  mssqlLib =
+  this.credentials.dbDriver === "tedious"
+    ? import("mssql")
+    : import("mssql/msnodesqlv8");
+
   queries = Queries;
 
   private retryCount = 0;
@@ -25,9 +30,11 @@ export default class MSSQL
       return this.connection;
     }
 
-    const { encrypt, ...mssqlOptions }: any = this.credentials.mssqlOptions || {
+    const { encrypt, trustServerCertificate, ...mssqlOptions }: any = this.credentials.mssqlOptions || {
       encrypt: true,
     };
+
+    const { ...msnodesqlv8Options }: any = this.credentials.msnodesqlv8Options;
 
     let encryptAttempt = typeof encrypt !== "undefined" ? encrypt : true;
     if (typeof encryptOverride !== "undefined") {
@@ -45,8 +52,25 @@ export default class MSSQL
       this.credentials.password = null;
     }
 
+    let msnodesqlv8AuthConfig: any;
+    if (this.credentials.connectionMethod === "Integrated" || this.credentials.connectionMethod === "mssqlnodev8 Connection String") {
+      msnodesqlv8AuthConfig = {
+        connectionString: this.credentials.msnodesqlv8ConnectString || `Driver=${this.credentials.odbcDriver};Server=${
+          this.credentials.server
+        }${
+          this.credentials.database
+            ? `;Database=${this.credentials.database}`
+            : ""
+        }`,
+        options: {
+          ...msnodesqlv8Options
+        }
+      };
+    }
+
+    const MSSQLLib = await this.mssqlLib;
     const pool = new MSSQLLib.ConnectionPool(
-      this.credentials.connectString || {
+      msnodesqlv8AuthConfig || this.credentials.tediousConnectString || {
         database: this.credentials.database,
         connectionTimeout: this.credentials.connectionTimeout * 1000,
         server: this.credentials.server,
@@ -54,10 +78,11 @@ export default class MSSQL
         password: this.credentials.password,
         domain: this.credentials.domain || undefined,
         port: this.credentials.port,
-        ...mssqlOptions,
+        ...tediousOptions,
         options: {
-          ...((mssqlOptions || {}).options || {}),
+          ...((tediousOptions || {}).options || {}),
           encrypt: encryptAttempt,
+          trustServerCertificate: trustServerCertificate
         },
       }
     );

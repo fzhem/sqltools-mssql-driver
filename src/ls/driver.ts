@@ -1,10 +1,10 @@
-import MSSQLLib, { IResult, Binary } from 'mssql';
+import { IResult, Binary } from 'mssql';
 import * as Queries from './queries';
 import AbstractDriver from '@sqltools/base-driver';
 import get from 'lodash/get';
 import { IConnectionDriver, NSDatabase, ContextValue, Arg0, MConnectionExplorer } from '@sqltools/types';
-import { parse as queryParse } from '@sqltools/util/query';
-import generateId from '@sqltools/util/internal-id';
+import parse from './parser';
+import { v4 as generateId } from 'uuid';
 import reservedWordsCompletion from './reserved-words';
 
 export default class MSSQL extends AbstractDriver<MSSQLLib.ConnectionPool, any> implements IConnectionDriver {
@@ -80,7 +80,7 @@ export default class MSSQL extends AbstractDriver<MSSQLLib.ConnectionPool, any> 
     request.multiple = true;
     const query = originalQuery.toString().replace(/^[ \t]*GO;?[ \t]*$/gmi, '');
     const { recordsets = [], rowsAffected, error } = <IResult<any> & { error: any }>(await request.query(query).catch(error => Promise.resolve({ error, recordsets: [], rowsAffected: [] })));
-    const queries = queryParse(query, 'mssql');
+    const queries = parse(query, 'mssql');
     return queries.map((q, i): NSDatabase.IResult => {
       const r = recordsets[i] || [];
       const columnNames = [];

@@ -57,7 +57,7 @@
     "build": "cross-env NODE_ENV=production concurrently \"npm:build:*\"",
     "build:ext": "npm run compile:ext -- --define:process.env.NODE_ENV=\"'production'\" --minify",
     "build:ls": "npm run compile:ls -- --define:process.env.NODE_ENV=\"'production'\" --minify",
-    "prepackage": "npm run build",
+    "prepackage": "npm run build"
   },
   "dependencies": {
     "@sqltools/base-driver": "latest",

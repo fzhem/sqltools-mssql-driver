@@ -34,20 +34,20 @@ SELECT
   (CASE WHEN LOWER(TC.CONSTRAINT_TYPE) = 'primary key' THEN 1 ELSE 0 END) as "isPk",
   (CASE WHEN LOWER(TC.CONSTRAINT_TYPE) = 'foreign key' THEN 1 ELSE 0 END) as "isFk"
 FROM
-  INFORMATION_SCHEMA.COLUMNS C
-  LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU ON (
+  ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.COLUMNS` : 'INFORMATION_SCHEMA.COLUMNS'} C
+  LEFT JOIN ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE` : 'INFORMATION_SCHEMA.KEY_COLUMN_USAGE'} AS KCU ON (
     C.TABLE_CATALOG = KCU.TABLE_CATALOG
     AND C.TABLE_NAME = KCU.TABLE_NAME
     AND C.TABLE_SCHEMA = KCU.TABLE_SCHEMA
     AND C.TABLE_CATALOG = KCU.TABLE_CATALOG
     AND C.COLUMN_NAME = KCU.COLUMN_NAME
   )
-  LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC ON (
+  LEFT JOIN ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS` : 'INFORMATION_SCHEMA.TABLE_CONSTRAINTS'} AS TC ON (
     TC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME
     AND TC.TABLE_SCHEMA = KCU.TABLE_SCHEMA
     AND TC.TABLE_CATALOG = KCU.TABLE_CATALOG
   )
-  JOIN INFORMATION_SCHEMA.TABLES AS T ON C.TABLE_NAME = T.TABLE_NAME
+  JOIN ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.TABLES` : 'INFORMATION_SCHEMA.TABLES'} AS T ON C.TABLE_NAME = T.TABLE_NAME
   AND C.TABLE_SCHEMA = T.TABLE_SCHEMA
   AND C.TABLE_CATALOG = T.TABLE_CATALOG
 WHERE
@@ -79,7 +79,7 @@ SELECT
   T.TABLE_SCHEMA AS "schema",
   T.TABLE_CATALOG AS "database",
   CONVERT(BIT, CASE WHEN T.TABLE_TYPE = 'BASE TABLE' THEN 0 ELSE 1 END) AS "isView"
-FROM INFORMATION_SCHEMA.TABLES AS T
+FROM ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.TABLES` : 'INFORMATION_SCHEMA.TABLES'} AS T
 WHERE
   T.TABLE_SCHEMA = '${p => p.schema}'
   AND T.TABLE_CATALOG = '${p => p.database}'
@@ -98,7 +98,7 @@ SELECT
   '${ContextValue.SCHEMA}' as "type",
   'group-by-ref-type' as "iconId",
   catalog_name as "database"
-FROM information_schema.schemata
+FROM ${p => p.database ? `${p.database}.information_schema.schemata` : 'information_schema.schemata'}
 WHERE
   LOWER(schema_name) NOT IN ('information_schema', 'sys', 'guest')
   AND LOWER(schema_name) NOT LIKE 'db\\_%' ESCAPE '\\'
@@ -114,6 +114,15 @@ SELECT name AS label,
 FROM MASTER.dbo.sysdatabases
 WHERE name NOT IN ('master', 'model', 'msdb', 'tempdb')
 `;
+export const searchDatabases: IBaseQueries['searchTables'] = queryFactory`
+SELECT name AS label,
+  name AS "database",
+  '${ContextValue.DATABASE}' AS "type",
+  'database' AS "detail"
+FROM MASTER.dbo.sysdatabases
+WHERE name NOT IN ('master', 'model', 'msdb', 'tempdb')
+${p => p.search ? `AND LOWER(name) LIKE '%${p.search.toLowerCase()}%'` : ''}
+`;
 export const searchTables: IBaseQueries['searchTables'] = queryFactory`
 SELECT
   T.TABLE_NAME AS label,
@@ -123,7 +132,7 @@ SELECT
   (CASE WHEN T.TABLE_TYPE = 'BASE TABLE' THEN 0 ELSE 1 END) AS "isView",
   (CASE WHEN T.TABLE_TYPE = 'BASE TABLE' THEN 'table' ELSE 'view' END) AS description,
   ('[' + T.TABLE_CATALOG + '].[' + T.TABLE_SCHEMA + '].[' + T.TABLE_NAME + ']') as detail
-FROM INFORMATION_SCHEMA.TABLES AS T
+FROM ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.TABLES` : 'INFORMATION_SCHEMA.TABLES'} AS T
 WHERE
   LOWER(T.TABLE_SCHEMA) NOT IN ('information_schema', 'sys', 'guest')
   AND LOWER(T.TABLE_SCHEMA) NOT LIKE 'db\\_%' ESCAPE '\\'
@@ -137,7 +146,6 @@ ORDER BY
 OFFSET 0 ROWS
 FETCH NEXT ${p => p.limit || 100} ROWS ONLY
 `;
-
 export const searchColumns: IBaseQueries['searchColumns'] = queryFactory`
 SELECT
   C.COLUMN_NAME AS label,
@@ -152,20 +160,20 @@ SELECT
   (CASE WHEN LOWER(TC.CONSTRAINT_TYPE) = 'primary key' THEN 1 ELSE 0 END) as "isPk",
   (CASE WHEN LOWER(TC.CONSTRAINT_TYPE) = 'foreign key' THEN 1 ELSE 0 END) as "isFk"
 FROM
-  INFORMATION_SCHEMA.COLUMNS C
-  LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU ON (
+  ${p => p.tables[0].database ? `${p.tables[0].database}.INFORMATION_SCHEMA.COLUMNS` : 'INFORMATION_SCHEMA.COLUMNS'} C
+  LEFT JOIN ${p => p.tables[0].database ? `${p.tables[0].database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE` : 'INFORMATION_SCHEMA.KEY_COLUMN_USAGE'} AS KCU ON (
     C.TABLE_CATALOG = KCU.TABLE_CATALOG
     AND C.TABLE_NAME = KCU.TABLE_NAME
     AND C.TABLE_SCHEMA = KCU.TABLE_SCHEMA
     AND C.TABLE_CATALOG = KCU.TABLE_CATALOG
     AND C.COLUMN_NAME = KCU.COLUMN_NAME
   )
-  LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC ON (
+  LEFT JOIN ${p => p.tables[0].database ? `${p.tables[0].database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS` : 'INFORMATION_SCHEMA.TABLE_CONSTRAINTS'} AS TC ON (
     TC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME
     AND TC.TABLE_SCHEMA = KCU.TABLE_SCHEMA
     AND TC.TABLE_CATALOG = KCU.TABLE_CATALOG
   )
-  JOIN INFORMATION_SCHEMA.TABLES AS T ON C.TABLE_NAME = T.TABLE_NAME
+  JOIN ${p => p.tables[0].database ? `${p.tables[0].database}.INFORMATION_SCHEMA.TABLES` : 'INFORMATION_SCHEMA.TABLES'} AS T ON C.TABLE_NAME = T.TABLE_NAME
   AND C.TABLE_SCHEMA = T.TABLE_SCHEMA
   AND C.TABLE_CATALOG = T.TABLE_CATALOG
 WHERE LOWER(C.TABLE_SCHEMA) NOT IN ('information_schema', 'sys', 'guest')

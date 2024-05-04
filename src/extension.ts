@@ -3,7 +3,7 @@ import { authentication, ExtensionContext, extensions } from 'vscode';
 import { DRIVER_ALIASES } from './constants';
 const AUTHENTICATION_PROVIDER = 'sqltools-driver-credentials';
 const { publisher, name } = require('../package.json');
-const driverName = 'SQL Server/Azure';
+const driverName = 'SQL Server/Azure+';
 export async function activate(extContext: ExtensionContext): Promise<IDriverExtensionApi> {
   const sqltools = extensions.getExtension<IExtension>('mtxr.sqltools');
   if (!sqltools) {

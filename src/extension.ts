@@ -39,7 +39,7 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
   return {
     driverName,
     parseBeforeSaveConnection: ({ connInfo }) => {
-      const propsToRemove = ['connectionMethod', 'id', 'usePassword'];
+      const propsToRemove = ['id', 'usePassword'];
       if (connInfo.usePassword) {
         if (connInfo.usePassword.toString().toLowerCase().includes('ask')) {
           propsToRemove.push('password');
@@ -53,7 +53,7 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
           propsToRemove.push('askForPassword');
         }
       }
-      if (connInfo.connectString) {
+      if (connInfo.tediousConnectString || connInfo.msnodesqlv8ConnectString) {
         propsToRemove.push('port');
         propsToRemove.push('askForPassword');
       }
@@ -68,8 +68,10 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
       };
       if (connInfo.socketPath) {
         formData.connectionMethod = 'Socket File';
-      } else if (connInfo.connectString) {
-        formData.connectionMethod = 'Connection String';
+      } else if (connInfo.tediousConnectString) {
+        formData.connectionMethod = 'tedious Connection String';
+      } else if (connInfo.msnodesqlv8ConnectString) {
+        formData.connectionMethod = 'mssqlnodev8 Connection String';
       }
 
       if (connInfo.askForPassword) {
@@ -84,7 +86,7 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
       return formData;
     },
     resolveConnection: async ({ connInfo }) => {
-      if (connInfo.password === undefined && !connInfo.askForPassword && !connInfo.connectString) {
+      if (connInfo.password === undefined && !connInfo.askForPassword && !connInfo.tediousConnectString && !connInfo.msnodesqlv8ConnectString && connInfo.connectionMethod !== "Integrated") {
         const scopes = [connInfo.name, (connInfo.username || "")];
         let session = await authentication.getSession(
           AUTHENTICATION_PROVIDER,
@@ -102,8 +104,6 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
           connInfo.password = session.accessToken;
         }
       }
-      return connInfo;
-
       return connInfo;
     },
     driverAliases: DRIVER_ALIASES,

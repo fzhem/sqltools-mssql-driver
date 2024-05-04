@@ -58,7 +58,6 @@
     "build:ext": "npm run compile:ext -- --define:process.env.NODE_ENV=\"'production'\" --minify",
     "build:ls": "npm run compile:ls -- --define:process.env.NODE_ENV=\"'production'\" --minify",
     "prepackage": "npm run build",
-    "package": "vsce package --no-yarn --allow-star-activation -o ."
   },
   "dependencies": {
     "@sqltools/base-driver": "latest",
@@ -72,7 +71,7 @@
     "@types/mssql": "^4.3.1",
     "@types/uuid": "^9.0.8",
     "@types/vscode": "^1.72.0",
-    "@vscode/vsce": "^2.26.0",
+    "@vscode/vsce": "^2.26.1",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "esbuild": "^0.20.2",

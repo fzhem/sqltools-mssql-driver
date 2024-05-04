@@ -34,7 +34,10 @@ jobs:
         run: echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
 
       - name: Build extension
-        run: npm run package
+        run: npm run prepackage
+
+      - name: Package extension
+        run: vsce package --no-yarn --allow-star-activation -o . --target linux-x64
 
       - name: Fetch latest commit hash (Ubuntu)
         id: get_commit_hash_ubuntu
@@ -43,7 +46,7 @@ jobs:
       - name: Rename and move VSIX file (Ubuntu)
         id: rename_vsix_ubuntu
         run: |
-          old_name="${{ steps.get_package_name_ubuntu.outputs.name }}-${{ steps.get_package_version_ubuntu.outputs.version }}.vsix"
+          old_name="${{ steps.get_package_name_ubuntu.outputs.name }}-linux-x64-${{ steps.get_package_version_ubuntu.outputs.version }}.vsix"
           new_name="${old_name%.*}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}.vsix"
           mkdir -p releases
           mv "$old_name" "releases/$new_name"
@@ -69,7 +72,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: releases/${{ steps.rename_vsix_ubuntu.outputs.new_name }}
-          asset_name: ${{ steps.get_package_name_ubuntu.outputs.name }}-${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}-linux.vsix
+          asset_name: ${{ steps.get_package_name_ubuntu.outputs.name }}-linux-x64-${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}.vsix
           asset_content_type: application/zip
   build:
     permissions:
@@ -105,7 +108,10 @@ jobs:
         run: echo "name=$(node -p "require('./package.json').name")" >> $ENV:GITHUB_OUTPUT
 
       - name: Build extension
-        run: npm run package
+        run: npm run prepackage
+
+      - name: Package extension
+        run: vsce package --no-yarn --allow-star-activation -o . --target win32-x64
 
       - name: Fetch latest commit hash (Windows)
         id: get_commit_hash_windows
@@ -116,7 +122,7 @@ jobs:
         id: rename_vsix_windows
         if: startsWith(matrix.os, 'windows')
         run: |
-          $old_name = "${{ steps.get_package_name_windows.outputs.name }}-${{ steps.get_package_version_windows.outputs.version }}"
+          $old_name = "${{ steps.get_package_name_windows.outputs.name }}-win32-x64-${{ steps.get_package_version_windows.outputs.version }}"
           $extension = ".vsix"
           $new_name = "$old_name-${{ steps.get_commit_hash_windows.outputs.hash }}$extension"
           New-Item -ItemType Directory -Force -Path releases
@@ -131,7 +137,7 @@ jobs:
         with:
           upload_url: ${{ needs.once.outputs.upload_url }}
           asset_path: releases/${{ steps.rename_vsix_windows.outputs.new_name }}
-          asset_name: ${{ steps.get_package_name_windows.outputs.name }}-${{ steps.get_package_version_windows.outputs.version }}-${{ steps.get_commit_hash_windows.outputs.hash }}-windows.vsix
+          asset_name: ${{ steps.get_package_name_windows.outputs.name }}-win32-x64-${{ steps.get_package_version_windows.outputs.version }}-${{ steps.get_commit_hash_windows.outputs.hash }}.vsix
           asset_content_type: application/zip
     
       - name: Display success message

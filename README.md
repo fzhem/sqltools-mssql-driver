@@ -1,8 +1,24 @@
 # SQLTools MSSQL/Azure+ Driver
 
-This package is part of [vscode-sqltools](https://vscode-sqltools.mteixeira.dev/?umd_source=repository&utm_medium=readme&utm_campaign=mssql) extension.
+## How to activate?
+- Install [Node.js](https://nodejs.org/en)
+- Set `sqltools.useNodeRuntime` to `true` in settings.
+
+This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscode-sqltools/tree/dev/packages/driver.mssql) Official driver with added functionality.
+## Screenshots
+MS Node SQL v8 settings page
+
+![MS Node SQL v8 settings page](https://github.com/fzhem/sqltools-mssql-driver/blob/dev/screenshots/msnodesqlv8_settings.png)
 
 ## Changelog
+
+### 0.5.0
+- Add msnodesqlv8 driver
+    - This adds Integrated (windows auth) as a connection method.
+- Add trustServerCertificate option in tedious driver.
+- Intellisense and sidepanel now works when you have multiple databases (check queries.ts).
+    - Intellisense for databases.
+- Set default connection timeout to be the same as the tedious driver (15000 ms)
 
 ### 0.4.3
 

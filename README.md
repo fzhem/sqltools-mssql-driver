@@ -8,7 +8,7 @@ This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscod
 ## Screenshots
 MS Node SQL v8 settings page
 
-![MS Node SQL v8 settings page](https://github.com/fzhem/sqltools-mssql-driver/blob/dev/screenshots/msnodesqlv8_settings.png)
+![MS Node SQL v8 settings page](https://raw.githubusercontent.com/fzhem/sqltools-mssql-driver-commver/dev/screenshots/msnodesqlv8_settings.png)
 
 ## Changelog
 

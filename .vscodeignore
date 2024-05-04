@@ -13,3 +13,4 @@ tsconfig.js
 *.log
 .babel*
 node_modules/
+!node_modules/msnodesqlv8

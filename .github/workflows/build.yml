@@ -1,0 +1,138 @@
+name: Package Extension
+
+on:
+  push:
+    branches:
+      - dev # Adjust the branch name as needed
+
+jobs:
+  once:
+    permissions:
+      contents: write # for creating release
+    name: Create release and ubuntu build
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Get package version (Ubuntu)
+        id: get_package_version_ubuntu
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        
+      - name: Get package name (Ubuntu)
+        id: get_package_name_ubuntu
+        run: echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
+
+      - name: Build extension
+        run: npm run package
+
+      - name: Fetch latest commit hash (Ubuntu)
+        id: get_commit_hash_ubuntu
+        run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Rename and move VSIX file (Ubuntu)
+        id: rename_vsix_ubuntu
+        run: |
+          old_name="${{ steps.get_package_name_ubuntu.outputs.name }}-${{ steps.get_package_version_ubuntu.outputs.version }}.vsix"
+          new_name="${old_name%.*}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}.vsix"
+          mkdir -p releases
+          mv "$old_name" "releases/$new_name"
+          echo "new_name=$new_name" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}
+          release_name: ${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}
+          body: |
+            Release created automatically from workflow.
+          draft: true
+          prerelease: true
+
+      - name: Upload VSIX file as release asset (Ubuntu)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: releases/${{ steps.rename_vsix_ubuntu.outputs.new_name }}
+          asset_name: ${{ steps.get_package_name_ubuntu.outputs.name }}-${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}-linux.vsix
+          asset_content_type: application/zip
+  build:
+    permissions:
+      contents: write # for creating release
+    name: Build packages
+    needs: once
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Get package version (Windows)
+        id: get_package_version_windows
+        if: startsWith(matrix.os, 'windows')
+        run: echo "version=$(node -p "require('./package.json').version")" >> $ENV:GITHUB_OUTPUT
+
+      - name: Get package name (Windows)
+        id: get_package_name_windows
+        if: startsWith(matrix.os, 'windows')
+        run: echo "name=$(node -p "require('./package.json').name")" >> $ENV:GITHUB_OUTPUT
+
+      - name: Build extension
+        run: npm run package
+
+      - name: Fetch latest commit hash (Windows)
+        id: get_commit_hash_windows
+        if: startsWith(matrix.os, 'windows')
+        run: echo "hash=$(git rev-parse --short HEAD)" >> $ENV:GITHUB_OUTPUT
+
+      - name: Rename and move VSIX file (Windows)
+        id: rename_vsix_windows
+        if: startsWith(matrix.os, 'windows')
+        run: |
+          $old_name = "${{ steps.get_package_name_windows.outputs.name }}-${{ steps.get_package_version_windows.outputs.version }}"
+          $extension = ".vsix"
+          $new_name = "$old_name-${{ steps.get_commit_hash_windows.outputs.hash }}$extension"
+          New-Item -ItemType Directory -Force -Path releases
+          Move-Item "$old_name$extension" "releases\$new_name"
+          echo "new_name=$new_name" >> $ENV:GITHUB_OUTPUT
+
+      - name: Upload VSIX file as release asset (Windows)
+        uses: actions/upload-release-asset@v1
+        if: startsWith(matrix.os, 'windows')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.once.outputs.upload_url }}
+          asset_path: releases/${{ steps.rename_vsix_windows.outputs.new_name }}
+          asset_name: ${{ steps.get_package_name_windows.outputs.name }}-${{ steps.get_package_version_windows.outputs.version }}-${{ steps.get_commit_hash_windows.outputs.hash }}-windows.vsix
+          asset_content_type: application/zip
+    
+      - name: Display success message
+        run: echo "Extension packaging complete and release created with asset uploaded."

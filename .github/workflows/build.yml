@@ -3,7 +3,7 @@ name: Package Extension
 on:
   push:
     branches:
-      - dev # Adjust the branch name as needed
+      - dev
 
 jobs:
   once:
@@ -87,7 +87,6 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
-        architecture: [x64, x64]
 
     steps:
       - name: Checkout code
@@ -98,6 +97,18 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Install unixODBC
+        if: startsWith(matrix.os, 'macos')
+        run: brew install unixodbc
+
+      - name: Install Microsoft's ODBC driver
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+          brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+          brew update
+          HOMEBREW_ACCEPT_EULA=Y brew install msodbcsql18 mssql-tools18
+
       - name: Install npm dependencies
         run: npm install
 
@@ -107,8 +118,8 @@ jobs:
         run: echo "version=$(node -p "require('./package.json').version")" >> $ENV:GITHUB_OUTPUT
 
       - name: Get package version (Mac OS)
-        id: get_package_version_mcos
-        if: startsWith(matrix.os, 'mcos')
+        id: get_package_version_macos
+        if: startsWith(matrix.os, 'macos')
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
       - name: Get package name (Windows)
@@ -117,8 +128,8 @@ jobs:
         run: echo "name=$(node -p "require('./package.json').name")" >> $ENV:GITHUB_OUTPUT
 
       - name: Get package name (Mac OS)
-        id: get_package_name_mcos
-        if: startsWith(matrix.os, 'mcos')
+        id: get_package_name_macos
+        if: startsWith(matrix.os, 'macos')
         run: echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
 
       - name: Build extension
@@ -127,8 +138,13 @@ jobs:
       - name: Install vsce globally
         run: npm install -g @vscode/vsce
 
-      - name: Package extension
+      - name: Package extension (Windows)
+        if: startsWith(matrix.os, 'windows')
         run: vsce package --no-yarn --allow-star-activation -o . --target win32-x64
+
+      - name: Package extension (Mac OS)
+        if: startsWith(matrix.os, 'macos')
+        run: vsce package --no-yarn --allow-star-activation -o . --target darwin-x64
 
       - name: Fetch latest commit hash (Windows)
         id: get_commit_hash_windows
@@ -136,8 +152,8 @@ jobs:
         run: echo "hash=$(git rev-parse --short HEAD)" >> $ENV:GITHUB_OUTPUT
 
       - name: Fetch latest commit hash (Mac OS)
-        id: get_commit_hash_mcos
-        if: startsWith(matrix.os, 'mcos')
+        id: get_commit_hash_macos
+        if: startsWith(matrix.os, 'macos')
         run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Rename and move VSIX file (Windows)
@@ -152,11 +168,11 @@ jobs:
           echo "new_name=$new_name" >> $ENV:GITHUB_OUTPUT
 
       - name: Rename and move VSIX file (Mac OS)
-        id: rename_vsix_mcos
-        if: startsWith(matrix.os, 'mcos')
+        id: rename_vsix_macos
+        if: startsWith(matrix.os, 'macos')
         run: |
-          old_name="${{ steps.get_package_name_mcos.outputs.name }}-darwin-x64-${{ steps.get_package_version_mcos.outputs.version }}.vsix"
-          new_name="${old_name%.*}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}.vsix"
+          old_name="${{ steps.get_package_name_macos.outputs.name }}-darwin-x64-${{ steps.get_package_version_macos.outputs.version }}.vsix"
+          new_name="${old_name%.*}-${{ steps.get_commit_hash_macos.outputs.hash }}.vsix"
           mkdir -p releases
           mv "$old_name" "releases/$new_name"
           echo "new_name=$new_name" >> $GITHUB_OUTPUT
@@ -174,13 +190,13 @@ jobs:
 
       - name: Upload VSIX file as release asset (Mac OS)
         uses: actions/upload-release-asset@v1
-        if: startsWith(matrix.os, 'mcos')
+        if: startsWith(matrix.os, 'macos')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.once.outputs.upload_url }}
-          asset_path: releases/${{ steps.rename_vsix_mcos.outputs.new_name }}
-          asset_name: ${{ steps.get_package_name_mcos.outputs.name }}-darwin-x64-${{ steps.get_package_version_mcos.outputs.version }}-${{ steps.get_commit_hash_mcos.outputs.hash }}.vsix
+          asset_path: releases/${{ steps.rename_vsix_macos.outputs.new_name }}
+          asset_name: ${{ steps.get_package_name_macos.outputs.name }}-darwin-x64-${{ steps.get_package_version_macos.outputs.version }}-${{ steps.get_commit_hash_macos.outputs.hash }}.vsix
           asset_content_type: application/zip
     
       - name: Display success message

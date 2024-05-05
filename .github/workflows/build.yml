@@ -86,7 +86,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest]
+        os: [windows-latest, macos-latest]
 
     steps:
       - name: Checkout code
@@ -105,10 +105,20 @@ jobs:
         if: startsWith(matrix.os, 'windows')
         run: echo "version=$(node -p "require('./package.json').version")" >> $ENV:GITHUB_OUTPUT
 
+      - name: Get package version (Mac OS)
+        id: get_package_version_mcos
+        if: startsWith(matrix.os, 'mcos')
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
       - name: Get package name (Windows)
         id: get_package_name_windows
         if: startsWith(matrix.os, 'windows')
         run: echo "name=$(node -p "require('./package.json').name")" >> $ENV:GITHUB_OUTPUT
+
+      - name: Get package name (Mac OS)
+        id: get_package_name_mcos
+        if: startsWith(matrix.os, 'mcos')
+        run: echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
 
       - name: Build extension
         run: npm run prepackage
@@ -124,6 +134,11 @@ jobs:
         if: startsWith(matrix.os, 'windows')
         run: echo "hash=$(git rev-parse --short HEAD)" >> $ENV:GITHUB_OUTPUT
 
+      - name: Fetch latest commit hash (Mac OS)
+        id: get_commit_hash_mcos
+        if: startsWith(matrix.os, 'mcos')
+        run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Rename and move VSIX file (Windows)
         id: rename_vsix_windows
         if: startsWith(matrix.os, 'windows')
@@ -135,6 +150,16 @@ jobs:
           Move-Item "$old_name$extension" "releases\$new_name"
           echo "new_name=$new_name" >> $ENV:GITHUB_OUTPUT
 
+      - name: Rename and move VSIX file (Mac OS)
+        id: rename_vsix_mcos
+        if: startsWith(matrix.os, 'mcos')
+        run: |
+          old_name="${{ steps.get_package_name_mcos.outputs.name }}-darwin-x64-${{ steps.get_package_version_mcos.outputs.version }}.vsix"
+          new_name="${old_name%.*}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}.vsix"
+          mkdir -p releases
+          mv "$old_name" "releases/$new_name"
+          echo "new_name=$new_name" >> $GITHUB_OUTPUT
+
       - name: Upload VSIX file as release asset (Windows)
         uses: actions/upload-release-asset@v1
         if: startsWith(matrix.os, 'windows')
@@ -144,6 +169,17 @@ jobs:
           upload_url: ${{ needs.once.outputs.upload_url }}
           asset_path: releases/${{ steps.rename_vsix_windows.outputs.new_name }}
           asset_name: ${{ steps.get_package_name_windows.outputs.name }}-win32-x64-${{ steps.get_package_version_windows.outputs.version }}-${{ steps.get_commit_hash_windows.outputs.hash }}.vsix
+          asset_content_type: application/zip
+
+      - name: Upload VSIX file as release asset (Mac OS)
+        uses: actions/upload-release-asset@v1
+        if: startsWith(matrix.os, 'mcos')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.once.outputs.upload_url }}
+          asset_path: releases/${{ steps.rename_vsix_mcos.outputs.new_name }}
+          asset_name: ${{ steps.get_package_name_mcos.outputs.name }}-darwin-x64-${{ steps.get_package_version_mcos.outputs.version }}-${{ steps.get_commit_hash_mcos.outputs.hash }}.vsix
           asset_content_type: application/zip
     
       - name: Display success message

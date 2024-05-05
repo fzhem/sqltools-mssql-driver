@@ -87,6 +87,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
+        architecture: [x64, x64]
 
     steps:
       - name: Checkout code

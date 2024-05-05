@@ -1,10 +1,11 @@
 # SQLTools MSSQL/Azure+ Driver
 
+This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscode-sqltools/tree/dev/packages/driver.mssql) Official driver with added functionality.
+
 ## How to activate?
 - Install [Node.js](https://nodejs.org/en)
 - Set `sqltools.useNodeRuntime` to `true` in settings.
 
-This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscode-sqltools/tree/dev/packages/driver.mssql) Official driver with added functionality.
 ## Screenshots
 MS Node SQL v8 settings page
 
@@ -19,6 +20,7 @@ MS Node SQL v8 settings page
 - Intellisense and sidepanel now works when you have multiple databases (check queries.ts).
     - Intellisense for databases.
 - Set default connection timeout to be the same as the tedious driver (15000 ms)
+- Note: msnodesqlv8 is only available on 64-bit versions of linux, windows, and macos. Hence this extension only works on these platforms. 
 
 ### 0.4.3
 

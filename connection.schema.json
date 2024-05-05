@@ -80,7 +80,7 @@
   },
   "properties": {
     "dbDriver": {
-      "title": "Node.js driver",
+      "title": "TDS driver",
       "type": "string",
       "minLength": 1,
       "enum": ["tedious", "mssqlnodev8"],

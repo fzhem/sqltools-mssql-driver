@@ -98,6 +98,10 @@ export default class MSSQL
       pool.on("error", reject);
       pool.connect().then(resolve).catch(reject);
     }).catch((e) => {
+      // The errors below are relevant to database configuration
+      if (e.code === "ESOCKET" || e.code === "ELOGIN" || e.code === "EINSTLOOKUP") {
+        throw e;
+      }
       if (this.retryCount === 0) {
         this.retryCount++;
         return this.open(!encryptAttempt).catch(() => {

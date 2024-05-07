@@ -8,7 +8,6 @@ import {
   ContextValue,
   Arg0,
   MConnectionExplorer,
-  IBaseQueries,
 } from "@sqltools/types";
 import parse from "./parser";
 import { v4 as generateId } from "uuid";
@@ -19,11 +18,11 @@ export default class MSSQL
   implements IConnectionDriver
 {
   mssqlLib =
-  this.credentials.dbDriver === "tedious"
-    ? import("mssql")
-    : import("mssql/msnodesqlv8");
+    this.credentials.dbDriver === "tedious"
+      ? import("mssql")
+      : import("mssql/msnodesqlv8");
 
-  queries: IBaseQueries = Queries;
+  queries = Queries;
 
   private retryCount = 0;
   public async open(encryptOverride?: boolean) {
@@ -31,7 +30,8 @@ export default class MSSQL
       return this.connection;
     }
 
-    const { encrypt, trustServerCertificate, ...tediousOptions }: any = this.credentials.tediousOptions || {
+    const { encrypt, trustServerCertificate, ...tediousOptions }: any = this
+      .credentials.tediousOptions || {
       encrypt: true,
     };
 
@@ -48,44 +48,50 @@ export default class MSSQL
       get(tediousOptions, "authentication.options.userName")
     ) {
       tediousOptions.authentication.options.password =
-      tediousOptions.authentication.options.password ||
+        tediousOptions.authentication.options.password ||
         this.credentials.password;
       this.credentials.password = null;
     }
 
     let msnodesqlv8AuthConfig: any;
-    if (this.credentials.connectionMethod === "Integrated" || this.credentials.connectionMethod === "mssqlnodev8 Connection String") {
+    if (
+      this.credentials.connectionMethod === "Integrated" ||
+      this.credentials.connectionMethod === "mssqlnodev8 Connection String"
+    ) {
       msnodesqlv8AuthConfig = {
-        connectionString: this.credentials.msnodesqlv8ConnectString || `Driver=${this.credentials.odbcDriver};Server=${
-          this.credentials.server
-        }${
-          this.credentials.database
-            ? `;Database=${this.credentials.database}`
-            : ""
-        }`,
+        connectionString:
+          this.credentials.msnodesqlv8ConnectString ||
+          `Driver=${this.credentials.odbcDriver};Server=${
+            this.credentials.server
+          }${
+            this.credentials.database
+              ? `;Database=${this.credentials.database}`
+              : ""
+          }`,
         options: {
-          ...msnodesqlv8Options
-        }
+          ...msnodesqlv8Options,
+        },
       };
     }
 
     const MSSQLLib = await this.mssqlLib;
     const pool = new MSSQLLib.ConnectionPool(
-      msnodesqlv8AuthConfig || this.credentials.tediousConnectString || {
-        database: this.credentials.database,
-        connectionTimeout: this.credentials.connectionTimeout * 1000,
-        server: this.credentials.server,
-        user: this.credentials.username,
-        password: this.credentials.password,
-        domain: this.credentials.domain || undefined,
-        port: this.credentials.port,
-        ...tediousOptions,
-        options: {
-          ...((tediousOptions || {}).options || {}),
-          encrypt: encryptAttempt,
-          trustServerCertificate: trustServerCertificate
-        },
-      }
+      msnodesqlv8AuthConfig ||
+        this.credentials.tediousConnectString || {
+          database: this.credentials.database,
+          connectionTimeout: this.credentials.connectionTimeout * 1000,
+          server: this.credentials.server,
+          user: this.credentials.username,
+          password: this.credentials.password,
+          domain: this.credentials.domain || undefined,
+          port: this.credentials.port,
+          ...tediousOptions,
+          options: {
+            ...((tediousOptions || {}).options || {}),
+            encrypt: encryptAttempt,
+            trustServerCertificate: trustServerCertificate,
+          },
+        }
     );
 
     await new Promise((resolve, reject) => {
@@ -230,15 +236,22 @@ export default class MSSQL
       return super.showRecords(table, opt);
     });
   }
+
   private async getChildrenForGroup({
     parent,
     item,
   }: Arg0<IConnectionDriver["getChildrenForItem"]>) {
     switch (item.childType) {
       case ContextValue.SCHEMA:
-        return this.queryResults(
-          this.queries.fetchSchemas(parent as NSDatabase.IDatabase)
-        );
+        try {
+          const result = await this.queryResults(
+            this.queries.fetchSchemas(parent)
+          );
+          return result;
+        } catch (error) {
+          this.close();
+          return [];
+        }
       case ContextValue.TABLE:
         return this.queryResults(
           this.queries.fetchTables(parent as NSDatabase.ISchema)

@@ -1,6 +1,6 @@
 # SQLTools MSSQL/Azure+ Driver
 
-This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscode-sqltools/tree/dev/packages/driver.mssql) Official driver with added functionality.
+This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscode-sqltools/tree/dev/packages/driver.mssql) Official driver with Windows Authentication support.
 
 ## How to activate?
 - Install [Node.js](https://nodejs.org/en)

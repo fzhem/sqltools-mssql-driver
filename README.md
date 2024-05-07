@@ -13,6 +13,9 @@ MS Node SQL v8 settings page
 
 ## Changelog
 
+### 0.5.2
+- Throw error for database misconfiguration rather than retrying connection. You will now see an error rather than successfully connected when credentials or config is wrong. 
+
 ### 0.5.1
 - Resolved GetChildrenForTreeItemRequest failed error when user accesses inaccessible schema. 
 - Add option to display empty schema.

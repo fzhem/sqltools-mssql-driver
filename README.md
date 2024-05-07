@@ -13,12 +13,15 @@ MS Node SQL v8 settings page
 
 ## Changelog
 
+### 0.5.1
+- Resolved GetChildrenForTreeItemRequest failed error when user accesses inaccessible schema. 
+- Add option to display empty schema.
+
 ### 0.5.0
 - Add msnodesqlv8 driver
     - This adds Integrated (windows auth) as a connection method.
 - Add trustServerCertificate option in tedious driver.
-- Intellisense and sidepanel now works when you have multiple databases (check queries.ts).
-    - Intellisense for databases.
+- Intellisense for databases.
 - Set default connection timeout to be the same as the tedious driver (15000 ms)
 - Note: msnodesqlv8 is only available on 64-bit versions of linux, windows, and macos. Hence this extension only works on these platforms. 
 

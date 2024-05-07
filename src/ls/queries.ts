@@ -106,6 +106,19 @@ WHERE
 ORDER BY
   schema_name;
 `;
+export const fetchSchemasExcludingEmpty: IBaseQueries['fetchSchemas'] = queryFactory`
+SELECT DISTINCT
+  T.TABLE_SCHEMA AS label,
+  T.TABLE_SCHEMA AS "schema",
+  '${ContextValue.SCHEMA}' as "type",
+  'group-by-ref-type' as "iconId",
+  'CancerRegister' as "database"
+FROM ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.TABLES` : 'INFORMATION_SCHEMA.TABLES'} AS T
+WHERE
+  T.TABLE_CATALOG = '${p => p.database}'
+  AND LOWER(T.TABLE_SCHEMA) NOT LIKE 'db\\_%' ESCAPE '\\'
+ORDER BY T.TABLE_SCHEMA
+`;
 export const fetchDatabases: IBaseQueries['fetchDatabases'] = queryFactory`
 SELECT name AS label,
   name AS "database",

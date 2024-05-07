@@ -243,14 +243,26 @@ export default class MSSQL
   }: Arg0<IConnectionDriver["getChildrenForItem"]>) {
     switch (item.childType) {
       case ContextValue.SCHEMA:
-        try {
-          const result = await this.queryResults(
-            this.queries.fetchSchemas(parent)
-          );
-          return result;
-        } catch (error) {
-          this.close();
-          return [];
+        if (this.credentials.sidePanelEmptySchema) {
+          try {
+            const result = await this.queryResults(
+              this.queries.fetchSchemas(parent)
+            );
+            return result;
+          } catch (error) {
+            this.close();
+            return [];
+          }
+        } else {
+          try {
+            const result = await this.queryResults(
+              this.queries.fetchSchemasExcludingEmpty(parent)
+            );
+            return result;
+          } catch (error) {
+            this.close();
+            return [];
+          }
         }
       case ContextValue.TABLE:
         return this.queryResults(

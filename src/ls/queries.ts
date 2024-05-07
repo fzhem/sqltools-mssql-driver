@@ -112,7 +112,7 @@ SELECT DISTINCT
   T.TABLE_SCHEMA AS "schema",
   '${ContextValue.SCHEMA}' as "type",
   'group-by-ref-type' as "iconId",
-  'CancerRegister' as "database"
+  '${p => p.database}' as "database"
 FROM ${p => p.database ? `${p.database}.INFORMATION_SCHEMA.TABLES` : 'INFORMATION_SCHEMA.TABLES'} AS T
 WHERE
   T.TABLE_CATALOG = '${p => p.database}'

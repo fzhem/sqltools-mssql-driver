@@ -97,10 +97,21 @@
       "minimum": 0,
       "default": 15
     },
-    "sidePanelEmptySchema": {
-      "title": "Display Empty Schemas",
-      "type": "boolean",
-      "default": true
+    "sidePanelOptions": {
+      "type": "object",
+      "title": "Side panel options (Experimental)",
+      "properties": {
+        "emptyDatabase": {
+          "title": "Display Empty Databases",
+          "type": "boolean",
+          "default": true
+        },
+        "emptySchema": {
+          "title": "Display Empty Schemas",
+          "type": "boolean",
+          "default": true
+        }
+      }
     }
   },
   "dependencies": {

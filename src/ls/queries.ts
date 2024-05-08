@@ -124,7 +124,7 @@ SELECT name AS label,
   name AS "database",
   '${ContextValue.DATABASE}' AS "type",
   'database' AS "detail"
-FROM MASTER.dbo.sysdatabases
+FROM sys.databases
 WHERE name NOT IN ('master', 'model', 'msdb', 'tempdb')
 `;
 export const searchDatabases: IBaseQueries['searchTables'] = queryFactory`
@@ -132,7 +132,7 @@ SELECT name AS label,
   name AS "database",
   '${ContextValue.DATABASE}' AS "type",
   'database' AS "detail"
-FROM MASTER.dbo.sysdatabases
+FROM sys.databases
 WHERE name NOT IN ('master', 'model', 'msdb', 'tempdb')
 ${p => p.search ? `AND LOWER(name) LIKE '%${p.search.toLowerCase()}%'` : ''}
 `;

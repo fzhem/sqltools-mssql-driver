@@ -13,12 +13,16 @@ MS Node SQL v8 settings page
 
 ## Changelog
 
+### 0.5.3
+- Add option to display empty databases in side panel.
+- Use MS recommended sys table to get a list of databases. This potentially fixes [vscode-sqltools/issues#710](https://github.com/mtxr/vscode-sqltools/issues/710)
+
 ### 0.5.2
 - Throw error for database misconfiguration rather than retrying connection. You will now see an error rather than successfully connected when credentials or config is wrong. 
 
 ### 0.5.1
 - Resolved GetChildrenForTreeItemRequest failed error when user accesses inaccessible schema. 
-- Add option to display empty schema.
+- Add option to display empty schema in side panel.
 
 ### 0.5.0
 - Add msnodesqlv8 driver

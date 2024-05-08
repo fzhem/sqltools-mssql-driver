@@ -35,7 +35,11 @@ export default class MSSQL
       encrypt: true,
     };
 
-    const { ...msnodesqlv8Options }: any = this.credentials.msnodesqlv8Options;
+    let msnodesqlv8Options: any;
+    if (this.credentials.dbDriver !== "tedious") {
+      const { ...options }: any = this.credentials.msnodesqlv8Options;
+      msnodesqlv8Options = options;
+    }
 
     let encryptAttempt = typeof encrypt !== "undefined" ? encrypt : true;
     if (typeof encryptOverride !== "undefined") {

@@ -101,12 +101,12 @@
       "type": "object",
       "title": "Side panel options (Experimental)",
       "properties": {
-        "emptyDatabase": {
+        "inaccessibleDatabase": {
           "title": "Display Empty Databases",
           "type": "boolean",
           "default": true
         },
-        "emptySchema": {
+        "inaccessibleSchema": {
           "title": "Display Empty Schemas",
           "type": "boolean",
           "default": true

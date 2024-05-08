@@ -99,7 +99,11 @@ export default class MSSQL
       pool.connect().then(resolve).catch(reject);
     }).catch((e) => {
       // The errors below are relevant to database configuration
-      if (e.code === "ESOCKET" || e.code === "ELOGIN" || e.code === "EINSTLOOKUP") {
+      if (
+        e.code === "ESOCKET" ||
+        e.code === "ELOGIN" ||
+        e.code === "EINSTLOOKUP"
+      ) {
         throw e;
       }
       if (this.retryCount === 0) {
@@ -189,6 +193,47 @@ export default class MSSQL
     });
   };
 
+  public checkDBAccess(database: string) {
+    return new Promise((resolve) => {
+      this.query(
+        `SELECT TOP 1 1 FROM ${database}.INFORMATION_SCHEMA.TABLES`,
+        {}
+      ).then((result) => {
+        if (result[0].error) {
+          if (result[0].error.code === "EREQUEST") {
+            resolve(false);
+          }
+        } else {
+          resolve(true);
+        }
+      });
+    });
+  }
+
+  public async findAccessibleDatabases(databases: NSDatabase.IDatabase[]) {
+    const accessibleDatabases = [];
+    const promises = [];
+
+    for (const db of databases) {
+      const accessPromise = this.checkDBAccess(db.database);
+      promises.push(
+        accessPromise.then((access) => {
+          if (access) {
+            accessibleDatabases.push(db);
+          }
+        })
+      );
+    }
+
+    return Promise.all(promises)
+      .then(() => {
+        return accessibleDatabases;
+      })
+      .catch((error) => {
+        throw error;
+      });
+  }
+
   public async getChildrenForItem({
     item,
     parent,
@@ -196,7 +241,15 @@ export default class MSSQL
     switch (item.type) {
       case ContextValue.CONNECTION:
       case ContextValue.CONNECTED_CONNECTION:
-        return this.queryResults(this.queries.fetchDatabases());
+        const result = await this.queryResults(this.queries.fetchDatabases());
+        if (!this.credentials.sidePanelOptions.inaccessibleDatabase) {
+          return this.findAccessibleDatabases(result).then(
+            (accessibleDatabases) => {
+              return accessibleDatabases;
+            }
+          );
+        }
+        return result;
       case ContextValue.TABLE:
       case ContextValue.VIEW:
         return this.getColumns(item as NSDatabase.ITable);
@@ -247,7 +300,7 @@ export default class MSSQL
   }: Arg0<IConnectionDriver["getChildrenForItem"]>) {
     switch (item.childType) {
       case ContextValue.SCHEMA:
-        if (this.credentials.sidePanelEmptySchema) {
+        if (this.credentials.sidePanelOptions.inaccessibleSchema) {
           try {
             const result = await this.queryResults(
               this.queries.fetchSchemas(parent)

@@ -8,6 +8,7 @@ This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscod
 
 ### :warning: Module did not self-register error when connecting :warning: :
 - This happens when you are using a Node version different from step 1.
+- Close VSCode
 - Go to your extension directory
     - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.5.4`
     - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.4`

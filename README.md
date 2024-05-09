@@ -9,9 +9,9 @@ This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscod
 ### :warning: Module did not self-register error when connecting :warning: :
 - This happens when you are using a Node version different from step 1.
 - Go to you extension directory
-    - Windows: `%USERPROFILE%\.vscode\extesnsions\fzhem.sqltools-driver-mssql-commver-0.5.3`
-    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.3`
-    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.3`
+    - Windows: `%USERPROFILE%\.vscode\extesnsions\fzhem.sqltools-driver-mssql-commver-0.5.4`
+    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.4`
+    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.4`
 - Run `npm install msnodesqlv8`
 
 ## Screenshots
@@ -20,6 +20,9 @@ MS Node SQL v8 settings page
 ![MS Node SQL v8 settings page](https://raw.githubusercontent.com/fzhem/sqltools-mssql-driver-commver/dev/screenshots/msnodesqlv8_settings.png)
 
 ## Changelog
+
+### 0.5.4
+- Update activation instructions and add `Module did not self-register error solution`.
 
 ### 0.5.3
 - Add option to display empty databases in side panel.

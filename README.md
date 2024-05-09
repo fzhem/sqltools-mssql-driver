@@ -13,7 +13,7 @@ This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscod
     - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.5.4`
     - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.4`
     - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.4`
-- Run `npm install msnodesqlv8`
+- Run `npm install msnodesqlv8` in your terminal.
 
 ## Screenshots
 MS Node SQL v8 settings page

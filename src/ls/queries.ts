@@ -106,6 +106,7 @@ WHERE
 ORDER BY
   schema_name;
 `;
+
 export const fetchSchemasExcludingEmpty: IBaseQueries['fetchSchemas'] = queryFactory`
 SELECT DISTINCT
   T.TABLE_SCHEMA AS label,
@@ -119,6 +120,7 @@ WHERE
   AND LOWER(T.TABLE_SCHEMA) NOT LIKE 'db\\_%' ESCAPE '\\'
 ORDER BY T.TABLE_SCHEMA
 `;
+
 export const fetchDatabases: IBaseQueries['fetchDatabases'] = queryFactory`
 SELECT name AS label,
   name AS "database",
@@ -126,7 +128,9 @@ SELECT name AS label,
   'database' AS "detail"
 FROM sys.databases
 WHERE name NOT IN ('master', 'model', 'msdb', 'tempdb')
+ORDER BY label
 `;
+
 export const searchDatabases: IBaseQueries['searchTables'] = queryFactory`
 SELECT name AS label,
   name AS "database",
@@ -135,7 +139,9 @@ SELECT name AS label,
 FROM sys.databases
 WHERE name NOT IN ('master', 'model', 'msdb', 'tempdb')
 ${p => p.search ? `AND LOWER(name) LIKE '%${p.search.toLowerCase()}%'` : ''}
+ORDER BY name
 `;
+
 export const searchTables: IBaseQueries['searchTables'] = queryFactory`
 SELECT
   T.TABLE_NAME AS label,
@@ -159,6 +165,7 @@ ORDER BY
 OFFSET 0 ROWS
 FETCH NEXT ${p => p.limit || 100} ROWS ONLY
 `;
+
 export const searchColumns: IBaseQueries['searchColumns'] = queryFactory`
 SELECT
   C.COLUMN_NAME AS label,
@@ -208,59 +215,104 @@ OFFSET 0 ROWS
 FETCH NEXT ${p => p.limit || 100} ROWS ONLY
 `;
 
+export const fetchStoredProcedures: IBaseQueries['fetchStoredProcedures'] =  queryFactory`
+SELECT (SCHEMA_NAME(o.schema_id) + '.' + o.name) AS label,
+  o.name AS "procedure",
+  'connection.storedProcedures' as "type",
+  'bracket-dot' as "iconId"
+FROM sys.sql_modules m INNER JOIN sys.objects o ON m.object_id = o.object_id 
+WHERE o.type = 'P' 
+ORDER BY (SCHEMA_NAME(o.schema_id) + '.' + o.name)
+`;
 
-// export default {
-//   fetchFunctions: `
-// SELECT
-//   f.specific_name AS name,
-//   f.routine_schema AS dbSchema,
-//   f.routine_catalog AS dbName,
-//   (
-//     ISNULL(f.routine_schema, '') +
-//     ISNULL('.', '') +
-//     ISNULL(f.routine_name, '')
-//   ) as signature,
-//   COALESCE(STUFF(
-//     (ISNULL(', ' + p.data_type, '')), 1, 2, N''
-//   ), N'') AS args,
-//   f.data_type AS resultType,
-//   (
-//     ISNULL(f.routine_catalog, '') +
-//     ISNULL('${TREE_SEP}', '') +
-//     ISNULL(f.routine_schema, '') +
-//     ISNULL('${TREE_SEP}', '') +
-//     (
-//       CASE
-//         WHEN f.routine_type = 'PROCEDURE' THEN 'procedures'
-//         ELSE 'functions'
-//       END
-//     ) +
-//     ISNULL('${TREE_SEP}', '') +
-//     ISNULL(f.specific_name, '')
-//   ) AS tree
-// FROM
-//   information_schema.routines AS f
-//   LEFT JOIN information_schema.parameters AS p ON (
-//     f.specific_name = p.specific_name
-//     AND f.routine_schema = p.specific_schema
-//     AND f.routine_catalog = p.specific_catalog
-//   )
-// WHERE
-//   f.routine_schema NOT IN (
-//     'information_schema',
-//     'performance_schema',
-//     'mysql',
-//     'sys'
-//   )
-// GROUP BY
-//   f.routine_catalog,
-//   f.specific_name,
-//   f.routine_schema,
-//   f.routine_name,
-//   f.data_type,
-//   f.routine_type,
-//   p.data_type
-// ORDER BY
-//   f.specific_name;
-// `
-// } as IBaseQueries;
+export const fetchScalarFunctions: IBaseQueries['fetchScalarFunctions'] =  queryFactory`
+SELECT (SCHEMA_NAME(o.schema_id) + '.' + o.name) AS label,
+  o.name AS "function",
+  'connection.scalarFunctions' as "type",
+  'bracket-dot' as "iconId"
+FROM sys.sql_modules m INNER JOIN sys.objects o ON m.object_id = o.object_id 
+WHERE o.type = 'FN'
+ORDER BY (SCHEMA_NAME(o.schema_id) + '.' + o.name)
+`;
+
+export const fetchTableValuedFunctions: IBaseQueries['fetchTableValuedFunctions'] =  queryFactory`
+SELECT (SCHEMA_NAME(o.schema_id) + '.' + o.name) AS label,
+  o.name AS "function",
+  'connection.tableValuedFunctions' as "type",
+  'bracket-dot' as "iconId"
+FROM sys.sql_modules m INNER JOIN sys.objects o ON m.object_id = o.object_id 
+WHERE o.type = 'TF' 
+ORDER BY (SCHEMA_NAME(o.schema_id) + '.' + o.name)
+`;
+
+export const fetchAggregateFunctions: IBaseQueries['fetchAggregateFunctions'] =  queryFactory`
+SELECT (SCHEMA_NAME(o.schema_id) + '.' + o.name) AS label,
+  o.name AS "function",
+  'connection.aggFunctions' as "type",
+  'bracket-dot' as "iconId"
+FROM sys.sql_modules m INNER JOIN sys.objects o ON m.object_id = o.object_id 
+WHERE o.type = 'AF' 
+ORDER BY (SCHEMA_NAME(o.schema_id) + '.' + o.name)
+`;
+
+export const fetchParameters: IBaseQueries['fetchFParameters'] =  queryFactory`
+-- source: https://www.mssqltips.com/sqlservertip/1669/generate-a-parameter-list-for-all-sql-server-stored-procedures-and-functions/
+SELECT 
+   PM.Parameter_ID AS [ParameterID],
+   (CASE
+      WHEN PM.Parameter_ID = 0 THEN 'Returns'
+      ELSE PM.Name
+      END)
+   + ' (' +
+   (TYPE_NAME(PM.User_Type_ID))
+   + ', ' +
+   (CASE
+      WHEN PM.Is_Output = 1 THEN 'Output'
+      ELSE 'Input'
+      END)
+    + ')' AS label,
+    'connection.parameters' as "type",
+    'symbol-field' as "iconId",
+    '${ContextValue.NO_CHILD}' as "childType"
+FROM sys.objects AS SO
+INNER JOIN sys.parameters AS PM ON SO.OBJECT_ID = PM.OBJECT_ID
+WHERE SO.TYPE IN ('P', 'FN', 'TF', 'AF')
+AND SO.name = '${p => p.function ? p.function : p.procedure}'
+ORDER BY SO.Type_Desc, label, SO.Name, PM.parameter_id
+`;
+
+export const fetchSynonyms: IBaseQueries['fetchSynonyms'] =  queryFactory`
+SELECT name AS label,
+  'connection.synonym' as "type",
+  'copy' as "iconId"
+FROM ${p => p.database ? `${p.database}.sys.synonyms` : 'sys.synonyms'}
+ORDER BY name;
+`;
+
+export const fetchUsers: IBaseQueries['fetchUsers'] =  queryFactory`
+SELECT name AS label,
+  'connection.users' as "type",
+  'symbol-field' as "iconId"
+FROM sysusers
+WHERE islogin = 1
+ORDER BY name
+`;
+
+export const fetchDatabaseRoles: IBaseQueries['fetchDatabaseRoles'] =  queryFactory`
+SELECT name AS label,
+  'connection.dbRoles' as "type",
+  'symbol-field' as "iconId"
+FROM sysusers
+WHERE issqlrole = 1
+ORDER BY name
+`;
+
+export const fetchLinkedServers: IBaseQueries['fetchLinkedServers'] =  queryFactory`
+SELECT name AS label,
+  'connection.linkedServers' as "type",
+  'symbol-field' as "iconId",
+  '${ContextValue.NO_CHILD}' as "childType"
+FROM sys.servers
+WHERE is_linked = 1
+ORDER BY name
+`;

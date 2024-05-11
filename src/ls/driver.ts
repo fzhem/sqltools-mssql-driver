@@ -245,15 +245,77 @@ export default class MSSQL
     switch (item.type) {
       case ContextValue.CONNECTION:
       case ContextValue.CONNECTED_CONNECTION:
-        const result = await this.queryResults(this.queries.fetchDatabases());
+        let result = await this.queryResults(this.queries.fetchDatabases());
+        const contextRoot = [
+          {
+            label: "Security",
+            database: "Security",
+            type: "connection.security",
+            detail: "security",
+            iconId: "shield",
+          },
+          {
+            label: "Functions",
+            database: "Functions",
+            type: ContextValue.FUNCTION,
+            detail: "functions",
+            iconId: "code",
+          },
+          {
+            label: "Stored Procedures",
+            database: "Procedures",
+            type: "connection.storedProceduresRoot",
+            detail: "procedures",
+            iconId: "variable-group",
+          },
+          {
+            label: "Linked Servers",
+            database: "Linked Servers",
+            type: "connection.linkedServers",
+            detail: "linkedservers",
+            iconId: "link",
+          },
+        ];
+        result = [...result, ...contextRoot];
         if (!this.credentials.sidePanelOptions.inaccessibleDatabase) {
           return this.findAccessibleDatabases(result).then(
             (accessibleDatabases) => {
+              accessibleDatabases = [...accessibleDatabases, ...contextRoot];
               return accessibleDatabases;
             }
           );
         }
         return result;
+      case "connection.security":
+        return <MConnectionExplorer.IChildItem[]>[
+          {
+            label: "Users",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "smiley",
+            childType: "connection.users",
+          },
+          {
+            label: "Roles",
+            type: "connection.roles",
+            iconId: "organization",
+            childType: ContextValue.RESOURCE_GROUP,
+          },
+        ];
+      case "connection.roles":
+        return <MConnectionExplorer.IChildItem[]>[
+          {
+            label: "Database Roles",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "folder",
+            childType: "connection.dbRoles",
+          },
+          {
+            label: "Application Roles",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "folder",
+            childType: "connection.appRoles",
+          },
+        ];
       case ContextValue.TABLE:
       case ContextValue.VIEW:
         return this.getColumns(item as NSDatabase.ITable);
@@ -264,6 +326,12 @@ export default class MSSQL
             type: ContextValue.RESOURCE_GROUP,
             iconId: "folder",
             childType: ContextValue.SCHEMA,
+          },
+          {
+            label: "Synonyms",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "folder",
+            childType: "connection.synonyms",
           },
         ];
       case ContextValue.RESOURCE_GROUP:
@@ -284,6 +352,44 @@ export default class MSSQL
           },
           // { label: 'Functions', type: ContextValue.RESOURCE_GROUP, iconId: 'folder', childType: ContextValue.FUNCTION },
         ];
+      case ContextValue.FUNCTION:
+        return <MConnectionExplorer.IChildItem[]>[
+          {
+            label: "Table-valued Functions",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "folder",
+            childType: "connection.tableValuedFunctions",
+          },
+          {
+            label: "Scalar-valued Functions",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "folder",
+            childType: "connection.scalarFunctions",
+          },
+          {
+            label: "Aggregate Functions",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "folder",
+            childType: "connection.aggFunctions",
+          },
+        ];
+      case "connection.tableValuedFunctions":
+      case "connection.scalarFunctions":
+      case "connection.aggFunctions":
+      case "connection.storedProcedures":
+        return this.queryResults(this.queries.fetchParameters(item));
+      case "connection.storedProceduresRoot":
+        return this.queryResults(this.queries.fetchStoredProcedures());
+      case "connection.linkedServers":
+        try {
+          const result = await this.queryResults(
+            this.queries.fetchLinkedServers()
+          );
+          return result;
+        } catch (error) {
+          this.close();
+          return [];
+        }
     }
     return [];
   }
@@ -333,8 +439,36 @@ export default class MSSQL
         return this.queryResults(
           this.queries.fetchViews(parent as NSDatabase.ISchema)
         );
-      case ContextValue.FUNCTION:
-        return []; //this.queryResults(this.queries.fetchFunctions(parent as NSDatabase.ISchema));
+      case "connection.scalarFunctions":
+        return this.queryResults(this.queries.fetchScalarFunctions());
+      case "connection.tableValuedFunctions":
+        return await this.queryResults(
+          this.queries.fetchTableValuedFunctions()
+        );
+      case "connection.aggFunctions":
+        return await this.queryResults(this.queries.fetchAggregateFunctions());
+      case "connection.synonyms":
+        const resultsSynonyms = await this.queryResults(
+          this.queries.fetchSynonyms(parent as NSDatabase.ISchema)
+        );
+        return resultsSynonyms.map((col) => ({
+          ...col,
+          childType: ContextValue.NO_CHILD,
+        }));
+      case "connection.users":
+        const resultsUsers = await this.queryResults(this.queries.fetchUsers());
+        return resultsUsers.map((col) => ({
+          ...col,
+          childType: ContextValue.NO_CHILD,
+        }));
+      case "connection.dbRoles":
+        const resultsDatabaseRoles = await this.queryResults(
+          this.queries.fetchDatabaseRoles()
+        );
+        return resultsDatabaseRoles.map((col) => ({
+          ...col,
+          childType: ContextValue.NO_CHILD,
+        }));
     }
     return [];
   }
@@ -373,40 +507,3 @@ export default class MSSQL
   public getStaticCompletions = async () => {
     return reservedWordsCompletion;
   };
-
-  // public getColumns(): Promise<NSDatabase.IColumn[]> {
-  //   return this.query(this.queries.fetchColumns)
-  //     .then(([queryRes]) => {
-  //       return queryRes.results
-  //         .reduce((prev, curr) => prev.concat(curr), [])
-  //         .map((obj) => {
-  //           return <NSDatabase.IColumn>{
-  //             ...obj,
-  //             isNullable: !!obj.isNullable ? obj.isNullable.toString() === 'yes' : null,
-  //             size: obj.size !== null ? parseInt(obj.size, 10) : null,
-  //             tableDatabase: obj.dbName,
-  //             isPk: (obj.constraintType || '').toLowerCase() === 'primary key',
-  //             isFk: (obj.constraintType || '').toLowerCase() === 'foreign key',
-  //             tree: obj.tree,
-  //           };
-  //         });
-  //     });
-  // }
-
-  // public getFunctions(): Promise<NSDatabase.IFunction[]> {
-  //   return this.query(this.queries.fetchFunctions)
-  //     .then(([queryRes]) => {
-  //       return queryRes.results
-  //         .reduce((prev, curr) => prev.concat(curr), [])
-  //         .map((obj) => {
-  //           return {
-  //             ...obj,
-  //             source: obj.source || '',
-  //             args: obj.args ? obj.args.split(/, */g) : [],
-  //             database: obj.dbName,
-  //             schema: obj.dbSchema,
-  //           } as NSDatabase.IFunction;
-  //         });
-  //     });
-  // }
-}

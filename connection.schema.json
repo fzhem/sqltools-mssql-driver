@@ -66,14 +66,6 @@
       "properties": {
         "instanceName": {
           "type": "string"
-        },
-        "trustedConnection": {
-          "type": "boolean",
-          "default": false
-        },
-        "useUTC": {
-          "type": "boolean",
-          "default": true
         }
       }
     }
@@ -124,7 +116,7 @@
             },
             "connectionMethod": {
               "enum": [
-                "tedious Connection String",
+                "Connection String",
                 "Server and Port",
                 "Socket File"
               ],
@@ -139,8 +131,7 @@
               "const": "mssqlnodev8"
             },
             "connectionMethod": {
-              "enum": ["mssqlnodev8 Connection String", "Integrated"],
-              "default": "Integrated"
+              "enum": ["Integrated"]
             }
           },
           "required": ["connectionMethod"]
@@ -211,7 +202,7 @@
             "connectionMethod": {
               "enum": ["tedious Connection String"]
             },
-            "tediousConnectString": {
+            "connectString": {
               "title": "Connection String",
               "type": "string",
               "minLength": 1
@@ -220,23 +211,7 @@
               "$ref": "#/definitions/tediousOptions"
             }
           },
-          "required": ["tediousConnectString"]
-        },
-        {
-          "properties": {
-            "connectionMethod": {
-              "enum": ["mssqlnodev8 Connection String"]
-            },
-            "msnodesqlv8ConnectString": {
-              "title": "Connection String",
-              "type": "string",
-              "minLength": 1
-            },
-            "msnodesqlv8Options": {
-              "$ref": "#/definitions/msnodesqlv8Options"
-            }
-          },
-          "required": ["msnodesqlv8ConnectString"]
+          "required": ["connectString"]
         },
         {
           "properties": {
@@ -253,6 +228,12 @@
               "title": "Server",
               "type": "string",
               "minLength": 1
+            },
+            "port": {
+              "title": "Port",
+              "type": "integer",
+              "minLength": 1,
+              "default": 1433
             },
             "database": {
               "$ref": "#/definitions/database"

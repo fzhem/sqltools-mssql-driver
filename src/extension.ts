@@ -53,7 +53,7 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
           propsToRemove.push('askForPassword');
         }
       }
-      if (connInfo.tediousConnectString || connInfo.msnodesqlv8ConnectString) {
+      if (connInfo.connectString) {
         propsToRemove.push('port');
         propsToRemove.push('askForPassword');
       }
@@ -68,10 +68,8 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
       };
       if (connInfo.socketPath) {
         formData.connectionMethod = 'Socket File';
-      } else if (connInfo.tediousConnectString) {
-        formData.connectionMethod = 'tedious Connection String';
-      } else if (connInfo.msnodesqlv8ConnectString) {
-        formData.connectionMethod = 'mssqlnodev8 Connection String';
+      } else if (connInfo.connectString) {
+        formData.connectionMethod = 'Connection String';
       }
 
       if (connInfo.askForPassword) {
@@ -86,7 +84,7 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
       return formData;
     },
     resolveConnection: async ({ connInfo }) => {
-      if (connInfo.password === undefined && !connInfo.askForPassword && !connInfo.tediousConnectString && !connInfo.msnodesqlv8ConnectString && connInfo.connectionMethod !== "Integrated") {
+      if (connInfo.password === undefined && !connInfo.askForPassword && !connInfo.connectString && connInfo.connectionMethod !== "Integrated") {
         const scopes = [connInfo.name, (connInfo.username || "")];
         let session = await authentication.getSession(
           AUTHENTICATION_PROVIDER,

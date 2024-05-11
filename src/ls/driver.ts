@@ -1,4 +1,4 @@
-import { IResult, Binary } from "mssql";
+import MSSQLLib, { IResult, Binary } from "mssql";
 import * as Queries from "./queries";
 import AbstractDriver from "@sqltools/base-driver";
 import get from "lodash/get";
@@ -7,21 +7,18 @@ import {
   NSDatabase,
   ContextValue,
   Arg0,
+  IConnection,
   MConnectionExplorer,
 } from "@sqltools/types";
 import parse from "./parser";
 import { v4 as generateId } from "uuid";
 import reservedWordsCompletion from "./reserved-words";
+import msnodesqlv8Lib from "msnodesqlv8";
 
 export default class MSSQL
   extends AbstractDriver<any, any>
   implements IConnectionDriver
 {
-  mssqlLib =
-    this.credentials.dbDriver === "tedious"
-      ? import("mssql")
-      : import("mssql/msnodesqlv8");
-
   queries = Queries;
 
   private retryCount = 0;
@@ -34,12 +31,6 @@ export default class MSSQL
       .credentials.tediousOptions || {
       encrypt: true,
     };
-
-    let msnodesqlv8Options: any;
-    if (this.credentials.dbDriver !== "tedious") {
-      const { ...options }: any = this.credentials.msnodesqlv8Options;
-      msnodesqlv8Options = options;
-    }
 
     let encryptAttempt = typeof encrypt !== "undefined" ? encrypt : true;
     if (typeof encryptOverride !== "undefined") {
@@ -57,31 +48,9 @@ export default class MSSQL
       this.credentials.password = null;
     }
 
-    let msnodesqlv8AuthConfig: any;
-    if (
-      this.credentials.connectionMethod === "Integrated" ||
-      this.credentials.connectionMethod === "mssqlnodev8 Connection String"
-    ) {
-      msnodesqlv8AuthConfig = {
-        connectionString:
-          this.credentials.msnodesqlv8ConnectString ||
-          `Driver=${this.credentials.odbcDriver};Server=${
-            this.credentials.server
-          }${
-            this.credentials.database
-              ? `;Database=${this.credentials.database}`
-              : ""
-          }`,
-        options: {
-          ...msnodesqlv8Options,
-        },
-      };
-    }
-
-    const MSSQLLib = await this.mssqlLib;
-    const pool = new MSSQLLib.ConnectionPool(
-      msnodesqlv8AuthConfig ||
-        this.credentials.tediousConnectString || {
+    if (this.credentials.dbDriver === "tedious") {
+      const pool = new MSSQLLib.ConnectionPool(
+        this.credentials.connectString || {
           database: this.credentials.database,
           connectionTimeout: this.credentials.connectionTimeout * 1000,
           server: this.credentials.server,
@@ -96,106 +65,212 @@ export default class MSSQL
             trustServerCertificate: trustServerCertificate,
           },
         }
-    );
+      );
 
-    await new Promise((resolve, reject) => {
-      pool.on("error", reject);
-      pool.connect().then(resolve).catch(reject);
-    }).catch((e) => {
-      // The errors below are relevant to database configuration
-      if (
-        e.code === "ESOCKET" ||
-        e.code === "ELOGIN" ||
-        e.code === "EINSTLOOKUP"
-      ) {
-        throw e;
+      await new Promise((resolve, reject) => {
+        pool.on("error", reject);
+        pool.connect().then(resolve).catch(reject);
+      }).catch((e) => {
+        // The errors below are relevant to database configuration
+        if (
+          e.code === "ESOCKET" ||
+          e.code === "ELOGIN" ||
+          e.code === "EINSTLOOKUP"
+        ) {
+          throw e;
+        }
+        if (this.retryCount === 0) {
+          this.retryCount++;
+          return this.open(!encryptAttempt).catch(() => {
+            this.retryCount = 0;
+            return Promise.reject(e);
+          });
+        }
+        return Promise.reject(e);
+      });
+
+      this.connection = Promise.resolve(pool);
+      return this.connection;
+    } else {
+      if (this.connection) {
+        return this.connection;
       }
-      if (this.retryCount === 0) {
-        this.retryCount++;
-        return this.open(!encryptAttempt).catch(() => {
-          this.retryCount = 0;
-          return Promise.reject(e);
-        });
-      }
-      return Promise.reject(e);
+  
+      this.connection = this.openConnection(this.credentials);
+      return this.connection;
+    }
+  }
+
+  private async openConnection(
+    credentials: IConnection<unknown>
+  ): Promise<unknown> {
+    const connectionString = `Driver={${
+      credentials.odbcDriver
+    }};Server={${credentials.server}${
+      credentials.port
+        ? "," + credentials.port
+        : "\\" + credentials.msnodesqlv8Options.instanceName
+    }};${
+      credentials.database
+        ? `;Database=${credentials.database}`
+        : ""
+    };Trusted_Connection=yes`;
+    return new Promise((resolve, reject) => {
+      msnodesqlv8Lib.open(connectionString, (err, conn) => {
+        if (err) {
+          reject(err);
+          throw err;
+        } else {
+          resolve(conn);
+        }
+      });
     });
-
-    this.connection = Promise.resolve(pool);
-
-    return this.connection;
   }
 
   public async close() {
-    if (!this.connection) return Promise.resolve();
+    if (this.credentials.dbDriver === "tedious") {
+      if (!this.connection) return Promise.resolve();
 
-    const pool = await this.connection;
-    await pool.close();
-    this.connection = null;
+      const pool = await this.connection;
+      await pool.close();
+      this.connection = null;
+    } else {
+      if (!this.connection) {
+        return;
+      }
+
+      const conn = await this.connection;
+      conn.close();
+      this.connection = null;
+    }
   }
 
   public query: (typeof AbstractDriver)["prototype"]["query"] = async (
     originalQuery,
     opt = {}
   ) => {
-    const pool = await this.open();
-    const { requestId } = opt;
-    const request = pool.request();
-    request.multiple = true;
-    const query = originalQuery.toString().replace(/^[ \t]*GO;?[ \t]*$/gim, "");
-    const {
-      recordsets = [],
-      rowsAffected,
-      error,
-    } = <IResult<any> & { error: any }>(
-      await request
-        .query(query)
-        .catch((error) =>
-          Promise.resolve({ error, recordsets: [], rowsAffected: [] })
-        )
-    );
-    const queries = parse(query, "mssql");
-    return queries.map((q, i): NSDatabase.IResult => {
-      const r = recordsets[i] || [];
-      const columnNames = [];
-      const bufferCols = [];
-      Object.values((<any>r).columns || []).forEach((col: any) => {
-        columnNames.push(col.name);
-        if (col && col.type && col.type.name === Binary.name) {
-          bufferCols.push(col.name);
+    if (this.credentials.dbDriver === "tedious") {
+      const pool = await this.open();
+      const { requestId } = opt;
+      const request = pool.request();
+      request.multiple = true;
+      const query = originalQuery
+        .toString()
+        .replace(/^[ \t]*GO;?[ \t]*$/gim, "");
+      const {
+        recordsets = [],
+        rowsAffected,
+        error,
+      } = <IResult<any> & { error: any }>(
+        await request
+          .query(query)
+          .catch((error) =>
+            Promise.resolve({ error, recordsets: [], rowsAffected: [] })
+          )
+      );
+      const queries = parse(query, "mssql");
+      return queries.map((q, i): NSDatabase.IResult => {
+        const r = recordsets[i] || [];
+        const columnNames = [];
+        const bufferCols = [];
+        Object.values((<any>r).columns || []).forEach((col: any) => {
+          columnNames.push(col.name);
+          if (col && col.type && col.type.name === Binary.name) {
+            bufferCols.push(col.name);
+          }
+        });
+        const messages = [];
+        if (error) {
+          messages.push(this.prepareMessage(error.message || error.toString()));
+        }
+        if (typeof rowsAffected[i] === "number")
+          messages.push(
+            this.prepareMessage(`${rowsAffected[i]} rows were affected.`)
+          );
+
+        return {
+          requestId,
+          resultId: generateId(),
+          connId: this.getId(),
+          cols: columnNames,
+          messages,
+          error,
+          query: q,
+          results: Array.isArray(r)
+            ? r.map((row) => {
+                bufferCols.forEach((c) => {
+                  try {
+                    row[c] = `0x${Buffer.from(row[c])
+                      .toString("hex")
+                      .toUpperCase()}`;
+                  } catch (_ee) {}
+                });
+                return row;
+              })
+            : [],
+        };
+      });
+    } else {
+      {
+        const conn = (await this.connection) || (await this.open());
+        const queryString = originalQuery
+          .toString()
+          .replace(/^[ \t]*GO;?[ \t]*$/gim, "");
+        try {
+          const queryResults = await this.executeQuery(conn, queryString);
+
+          const cols =
+            queryResults.length > 0 ? Object.keys(queryResults[0]) : [];
+
+          return [
+            {
+              requestId: opt.requestId,
+              resultId: generateId(),
+              connId: this.getId(),
+              cols,
+              messages: [
+                {
+                  date: new Date(),
+                  message: `Query ok with ${queryResults.length} results`,
+                },
+              ],
+              queryString,
+              results: queryResults,
+            },
+          ];
+        } catch (error) {
+
+          const rawMessage = (error as any).message || error + "";
+
+          return [
+            {
+              requestId: opt.requestId,
+              connId: this.getId(),
+              resultId: generateId(),
+              cols: [],
+              messages: [rawMessage],
+              error: true,
+              rawError: rawMessage,
+              queryString,
+              results: [],
+            },
+          ];
+        }
+      }
+    }
+  };
+
+  private async executeQuery(conn, query: string): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      conn.query(query, (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results);
         }
       });
-      const messages = [];
-      if (error) {
-        messages.push(this.prepareMessage(error.message || error.toString()));
-      }
-      if (typeof rowsAffected[i] === "number")
-        messages.push(
-          this.prepareMessage(`${rowsAffected[i]} rows were affected.`)
-        );
-
-      return {
-        requestId,
-        resultId: generateId(),
-        connId: this.getId(),
-        cols: columnNames,
-        messages,
-        error,
-        query: q,
-        results: Array.isArray(r)
-          ? r.map((row) => {
-              bufferCols.forEach((c) => {
-                try {
-                  row[c] = `0x${Buffer.from(row[c])
-                    .toString("hex")
-                    .toUpperCase()}`;
-                } catch (_ee) {}
-              });
-              return row;
-            })
-          : [],
-      };
     });
-  };
+  }
 
   public checkDBAccess(database: string) {
     return new Promise((resolve) => {
@@ -204,7 +279,8 @@ export default class MSSQL
         {}
       ).then((result) => {
         if (result[0].error) {
-          if (result[0].error.code === "EREQUEST") {
+          // EREQUEST error comes from mssql
+          if (result[0].error.code === "EREQUEST" || result[0].error === true) {
             resolve(false);
           }
         } else {
@@ -219,14 +295,16 @@ export default class MSSQL
     const promises = [];
 
     for (const db of databases) {
-      const accessPromise = this.checkDBAccess(db.database);
-      promises.push(
-        accessPromise.then((access) => {
-          if (access) {
-            accessibleDatabases.push(db);
-          }
-        })
-      );
+      if (db.type === ContextValue.DATABASE) {
+        const accessPromise = this.checkDBAccess(db.database);
+        promises.push(
+          accessPromise.then((access) => {
+            if (access) {
+              accessibleDatabases.push(db);
+            }
+          })
+        );
+      }
     }
 
     return Promise.all(promises)
@@ -287,7 +365,7 @@ export default class MSSQL
         }
         return result;
       case "connection.security":
-        return <MConnectionExplorer.IChildItem[]>[
+        return <MConnectionExplorer.IChildItem[]>(<unknown>[
           {
             label: "Users",
             type: ContextValue.RESOURCE_GROUP,
@@ -300,9 +378,9 @@ export default class MSSQL
             iconId: "organization",
             childType: ContextValue.RESOURCE_GROUP,
           },
-        ];
+        ]);
       case "connection.roles":
-        return <MConnectionExplorer.IChildItem[]>[
+        return <MConnectionExplorer.IChildItem[]>(<unknown>[
           {
             label: "Database Roles",
             type: ContextValue.RESOURCE_GROUP,
@@ -315,7 +393,7 @@ export default class MSSQL
             iconId: "folder",
             childType: "connection.appRoles",
           },
-        ];
+        ]);
       case ContextValue.TABLE:
       case ContextValue.VIEW:
         return this.getColumns(item as NSDatabase.ITable);
@@ -353,7 +431,7 @@ export default class MSSQL
           // { label: 'Functions', type: ContextValue.RESOURCE_GROUP, iconId: 'folder', childType: ContextValue.FUNCTION },
         ];
       case ContextValue.FUNCTION:
-        return <MConnectionExplorer.IChildItem[]>[
+        return <MConnectionExplorer.IChildItem[]>(<unknown>[
           {
             label: "Table-valued Functions",
             type: ContextValue.RESOURCE_GROUP,
@@ -372,7 +450,7 @@ export default class MSSQL
             iconId: "folder",
             childType: "connection.aggFunctions",
           },
-        ];
+        ]);
       case "connection.tableValuedFunctions":
       case "connection.scalarFunctions":
       case "connection.aggFunctions":

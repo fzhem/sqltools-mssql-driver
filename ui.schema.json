@@ -50,12 +50,6 @@
   "msnodesqlv8Options": {
     "instanceName": {
       "ui:help": "The instance name to connect to. The SQL Server Browser service must be running on the database server, and UDP port 1444 on the database server must be reachable."
-    },
-    "trustedConnection": {
-      "ui:help": "Use Windows Authentication."
-    },
-    "useUTC": {
-      "ui:help": "A boolean determining whether or not to use UTC time for values without time zone offset."
     }
   }
 }

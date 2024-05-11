@@ -507,3 +507,4 @@ export default class MSSQL
   public getStaticCompletions = async () => {
     return reservedWordsCompletion;
   };
+}

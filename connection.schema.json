@@ -115,11 +115,7 @@
               "const": "tedious"
             },
             "connectionMethod": {
-              "enum": [
-                "Connection String",
-                "Server and Port",
-                "Socket File"
-              ],
+              "enum": ["Connection String", "Server and Port", "Socket File"],
               "default": "Server and Port"
             }
           },
@@ -131,7 +127,8 @@
               "const": "mssqlnodev8"
             },
             "connectionMethod": {
-              "enum": ["Integrated"]
+              "enum": ["Integrated", "DSN"],
+              "default": "Integrated"
             }
           },
           "required": ["connectionMethod"]
@@ -170,7 +167,7 @@
               "$ref": "#/definitions/tediousOptions"
             }
           },
-          "required": ["server", "port", "database", "username"]
+          "required": ["server", "port", "username"]
         },
         {
           "properties": {
@@ -195,12 +192,12 @@
               "$ref": "#/definitions/tediousOptions"
             }
           },
-          "required": ["socketPath", "database", "username"]
+          "required": ["socketPath", "username"]
         },
         {
           "properties": {
             "connectionMethod": {
-              "enum": ["tedious Connection String"]
+              "enum": ["Connection String"]
             },
             "connectString": {
               "title": "Connection String",
@@ -243,6 +240,28 @@
             }
           },
           "required": ["odbcDriver", "server"]
+        },
+        {
+          "properties": {
+            "connectionMethod": {
+              "enum": ["DSN"]
+            },
+            "dsnName": {
+              "title": "DSN Name",
+              "type": "string",
+              "minLength": 1
+            },
+            "username": {
+              "$ref": "#/definitions/username"
+            },
+            "usePassword": {
+              "$ref": "#/definitions/usePassword"
+            },
+            "msnodesqlv8Options": {
+              "$ref": "#/definitions/msnodesqlv8Options"
+            }
+          },
+          "required": ["dsnName"]
         }
       ]
     },

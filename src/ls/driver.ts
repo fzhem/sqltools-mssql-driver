@@ -95,26 +95,44 @@ export default class MSSQL
       if (this.connection) {
         return this.connection;
       }
-  
+
       this.connection = this.openConnection(this.credentials);
       return this.connection;
     }
+  }
+  
+  cleanConnectionString(connectionString: string): string {
+    return connectionString
+      .split(";")
+      .filter((part) => {
+        const [key, value] = part.split("=");
+        // Keep parts where the value is not 'undefined', 'null', or empty
+        return !(
+          key &&
+          ["DATABASE", "UID", "PWD"].includes(key) &&
+          (!value || value === "undefined" || value === "null")
+        );
+      })
+      .join(";");
   }
 
   private async openConnection(
     credentials: IConnection<unknown>
   ): Promise<unknown> {
-    const connectionString = `Driver={${
-      credentials.odbcDriver
-    }};Server={${credentials.server}${
+    let connectionString: string;
+    connectionString = `Driver={${credentials.odbcDriver}};Server={${
+      credentials.server
+    }${
       credentials.port
         ? "," + credentials.port
         : "\\" + credentials.msnodesqlv8Options.instanceName
     }};${
-      credentials.database
-        ? `;Database=${credentials.database}`
-        : ""
+      credentials.database ? `;Database=${credentials.database}` : ""
     };Trusted_Connection=yes`;
+    if (credentials.connectionMethod === "DSN") {
+      connectionString = `DSN=${credentials.dsnName};UID=${credentials.username};PWD=${credentials.password}`
+      connectionString = this.cleanConnectionString(connectionString);
+    }
     return new Promise((resolve, reject) => {
       msnodesqlv8Lib.open(connectionString, (err, conn) => {
         if (err) {
@@ -239,7 +257,6 @@ export default class MSSQL
             },
           ];
         } catch (error) {
-
           const rawMessage = (error as any).message || error + "";
 
           return [
@@ -526,13 +543,18 @@ export default class MSSQL
       case "connection.aggFunctions":
         return await this.queryResults(this.queries.fetchAggregateFunctions());
       case "connection.synonyms":
-        const resultsSynonyms = await this.queryResults(
-          this.queries.fetchSynonyms(parent as NSDatabase.ISchema)
-        );
-        return resultsSynonyms.map((col) => ({
-          ...col,
-          childType: ContextValue.NO_CHILD,
-        }));
+        try {
+          const resultsSynonyms = await this.queryResults(
+            this.queries.fetchSynonyms(parent as NSDatabase.ISchema)
+          );
+          return resultsSynonyms.map((col) => ({
+            ...col,
+            childType: ContextValue.NO_CHILD,
+          }));
+        } catch (error) {
+          this.close();
+          return [];
+        }
       case "connection.users":
         const resultsUsers = await this.queryResults(this.queries.fetchUsers());
         return resultsUsers.map((col) => ({

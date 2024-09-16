@@ -8,15 +8,25 @@ This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscod
 1. Install [Node.js v20](https://nodejs.org/en)
 2. Set `sqltools.useNodeRuntime` to `true` in settings.
 
-### :warning: Module did not self-register error when connecting :warning: :
-- This happens when you are using a Node version different from step 1.
+### ⚠️ Module did not self-register error when connecting ⚠️ :
+- This happens when you are using a different Node version from `How to activate?` step 1.
 - (IMPORTANT!) Close VSCode
 - Go to your extension directory
-    - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.5.5`
-    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.5`
-    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.5`
+    - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.5.6`
+    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.6`
+    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.6`
 - Run `npm install msnodesqlv8@4.2.1` in your terminal.
     - Alternatively you can run `npm rebuild` but that may require additional libraries.
+
+## Connection Methods
+- Tedious driver
+    - Fork of the official driver with optional database input.
+    - Supports `trustServerCertificate` boolean setting.
+- MSNodeSQLv8 driver
+    - Supports Windows Authentication.
+    - DSN (Data Source Name) method takes ODBC data source name.
+        - If you a `windows authentication` DSN set Use password to `Use empty password`.
+        - SQL login/password DSNs require both username and password.
 
 ## Screenshots
 Side Panel with additional items
@@ -30,9 +40,15 @@ MS Node SQL v8 settings page
 
 ## Changelog
 
+### 0.5.6
+- Add DSN connection method in mssqlnodev8 driver
+- Fix missing connection string option in tedious driver
+- Make database input optional in tedious driver
+- Upgrade mssql -> 11.0.1
+
 ### 0.5.5
 - Add Security, Functions, Stored procedures, and Linked Servers to side panel
-- Use msnodesqlv8 directly effectively fixing [#1](https://github.com/fzhem/sqltools-mssql-driver-commver/issues/1)
+- Use msnodesqlv8 directly effectively fixing [#2](https://github.com/fzhem/sqltools-mssql-driver-commver/issues/2)
 
 ### 0.5.4
 - Update activation instructions and add `Module did not self-register error solution`.

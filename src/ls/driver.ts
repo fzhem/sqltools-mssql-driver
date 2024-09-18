@@ -7,6 +7,7 @@ import {
   NSDatabase,
   ContextValue,
   Arg0,
+  IQueryOptions,
   IConnection,
   MConnectionExplorer,
 } from "@sqltools/types";
@@ -100,7 +101,7 @@ export default class MSSQL
       return this.connection;
     }
   }
-  
+
   cleanConnectionString(connectionString: string): string {
     return connectionString
       .split(";")
@@ -130,7 +131,7 @@ export default class MSSQL
       credentials.database ? `;Database=${credentials.database}` : ""
     };Trusted_Connection=yes`;
     if (credentials.connectionMethod === "DSN") {
-      connectionString = `DSN=${credentials.dsnName};UID=${credentials.username};PWD=${credentials.password}`
+      connectionString = `DSN=${credentials.dsnName};UID=${credentials.username};PWD=${credentials.password}`;
       connectionString = this.cleanConnectionString(connectionString);
     }
     return new Promise((resolve, reject) => {
@@ -489,14 +490,36 @@ export default class MSSQL
     return [];
   }
 
-  public showRecords(table, opt) {
-    return this.searchItems(ContextValue.COLUMN, "", {
-      tables: [table],
-      limit: 1,
-    }).then((col) => {
-      opt.orderCol = col[0].label;
+  public compareVersions(currentVersion: string, targetVersion: string) {
+    const current = currentVersion.split(".").map(Number);
+    const target = targetVersion.split(".").map(Number);
+
+    for (let i = 0; i < current.length; i++) {
+      if (current[i] > target[i]) {
+        return true;
+      } else if (current[i] < target[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public async showRecords(
+    table: NSDatabase.ITable,
+    opt: IQueryOptions & { limit: number; page?: number }
+  ) {
+    const sqlServerVersionQuery = await this.query(
+      "SELECT SERVERPROPERTY('ProductVersion') AS Version",
+      {}
+    );
+    const sqlServerVersion = sqlServerVersionQuery[0].results[0].Version;
+    // SQL Server 2012 added support for OFFSET
+    if (this.compareVersions(sqlServerVersion, "11.0.1103.9")) {
       return super.showRecords(table, opt);
-    });
+    }
+    const { limit, page = 0 } = opt;
+    const params = { ...opt, limit, table, offset: page * limit };
+    return this.query(this.queries.fetchRecordsWithoutOffset(params), opt);
   }
 
   private async getChildrenForGroup({

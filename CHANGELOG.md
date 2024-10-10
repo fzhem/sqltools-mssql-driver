@@ -1,3 +1,11 @@
+### Future version(s)
+- Add triggers in side panel
+- Fix non-SQL Server linked server show records button in side panel
+
+### 0.5.8
+- SQL Server linked servers in side panel are now fully explorable with db/schema/table/column hierarchy
+- Experimental support for non-SQL Server linked servers
+
 ### 0.5.7
 - Side panel now supports all databases with proper escaping of table, database, and schema names.
 - Support fetch records functionality for pre SQL Server 2012 versions.

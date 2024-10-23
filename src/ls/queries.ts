@@ -5,7 +5,7 @@ export function escapeTableName(table: Partial<NSDatabase.ITable> | string) {
   let items: string[] = [];
   let tableObj = typeof table === 'string' ? <NSDatabase.ITable>{ label: table } : table;
   tableObj.linkedserver && items.push(`[${tableObj.linkedserver}]`);
-  tableObj.database && items.push(`[${tableObj.database}]`);
+  items.push(tableObj.database ? `[${tableObj.database}]` : "");
   tableObj.schema && items.push(`[${tableObj.schema}]`);
   items.push(`[${tableObj.label}]`);
   return items.join('.');
@@ -34,36 +34,29 @@ SELECT
   C.IS_NULLABLE AS "isNullable",
   (CASE WHEN LOWER(TC.CONSTRAINT_TYPE) = 'primary key' THEN 1 ELSE 0 END) as "isPk",
   (CASE WHEN LOWER(TC.CONSTRAINT_TYPE) = 'foreign key' THEN 1 ELSE 0 END) as "isFk"
-FROM ${p => p.linkedserver
-  ? `[${p.linkedserver}].[${p.database}].INFORMATION_SCHEMA.COLUMNS` 
-  : (p.database 
-      ? `${escapeTableName({ database: p.database, schema: "INFORMATION_SCHEMA", label: "COLUMNS" })}` 
-      : 'INFORMATION_SCHEMA.COLUMNS')} C
-  LEFT JOIN ${p => p.linkedserver
-    ? `[${p.linkedserver}].[${p.database}].INFORMATION_SCHEMA.KEY_COLUMN_USAGE` 
-    : (p.database 
-        ? `${escapeTableName({ database: p.database, schema: "INFORMATION_SCHEMA", label: "KEY_COLUMN_USAGE" })}` 
-        : 'INFORMATION_SCHEMA.KEY_COLUMN_USAGE')} AS KCU ON (
+FROM ${p => p.linkedserver || p.database
+         ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "INFORMATION_SCHEMA", label: "COLUMNS" })}` 
+         : 'INFORMATION_SCHEMA.COLUMNS'} C
+LEFT JOIN   ${p => p.linkedserver || p.database
+                ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "INFORMATION_SCHEMA", label: "KEY_COLUMN_USAGE" })}` 
+                : 'INFORMATION_SCHEMA.KEY_COLUMN_USAGE'} AS KCU ON (
     C.TABLE_CATALOG = KCU.TABLE_CATALOG
     AND C.TABLE_NAME = KCU.TABLE_NAME
     AND C.TABLE_SCHEMA = KCU.TABLE_SCHEMA
     AND C.TABLE_CATALOG = KCU.TABLE_CATALOG
     AND C.COLUMN_NAME = KCU.COLUMN_NAME
   )
-  LEFT JOIN ${p => p.linkedserver
-  ? `[${p.linkedserver}].[${p.database}].INFORMATION_SCHEMA.TABLE_CONSTRAINTS` 
-  : (p.database 
-      ? `${escapeTableName({ database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLE_CONSTRAINTS" })}` 
-      : 'INFORMATION_SCHEMA.TABLE_CONSTRAINTS')} AS TC ON (
+
+LEFT JOIN ${p => p.linkedserver || p.database
+                ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLE_CONSTRAINTS" })}` 
+                : 'INFORMATION_SCHEMA.TABLE_CONSTRAINTS'} AS TC ON (
     TC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME
     AND TC.TABLE_SCHEMA = KCU.TABLE_SCHEMA
     AND TC.TABLE_CATALOG = KCU.TABLE_CATALOG
   )
-  JOIN ${p => p.linkedserver
-    ? `[${p.linkedserver}].[${p.database}].INFORMATION_SCHEMA.TABLES` 
-    : (p.database 
-        ? `${escapeTableName({ database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLES" })}` 
-        : 'INFORMATION_SCHEMA.TABLES')} AS T ON C.TABLE_NAME = T.TABLE_NAME
+  JOIN ${p => p.linkedserver || p.database
+           ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLES" })}` 
+           : 'INFORMATION_SCHEMA.TABLES'} AS T ON C.TABLE_NAME = T.TABLE_NAME
   AND C.TABLE_SCHEMA = T.TABLE_SCHEMA
   AND C.TABLE_CATALOG = T.TABLE_CATALOG
 WHERE
@@ -84,7 +77,7 @@ FETCH NEXT ${p => p.limit || 50} ROWS ONLY
 `;
 
 export const fetchRecordsWithoutOffset: IBaseQueries['fetchRecords'] = queryFactory`
-SELECT *
+SELECT TOP ${p => p.limit || 100} *
 FROM ${p => escapeTableName(p.table)}
 ORDER BY 1 ASC
 `;
@@ -102,12 +95,9 @@ SELECT
   T.TABLE_CATALOG AS "database",
   CONVERT(BIT, CASE WHEN T.TABLE_TYPE = 'BASE TABLE' THEN 0 ELSE 1 END) AS "isView",
   ${p => p.linkedserver ? `'${p.linkedserver}'` : 'NULL'} AS linkedserver
-FROM ${p => p.linkedserver
-  ? `[${p.linkedserver}].[${p.database}].INFORMATION_SCHEMA.TABLES` 
-  : (p.database 
-      ? `${escapeTableName({ database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLES" })}` 
-      : 'INFORMATION_SCHEMA.TABLES')} AS T
-
+FROM ${p => p.linkedserver || p.database
+         ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLES" })}` 
+         : 'INFORMATION_SCHEMA.TABLES'} AS T
 WHERE
   T.TABLE_SCHEMA = '${p => p.schema}'
   AND T.TABLE_CATALOG = '${p => p.database}'
@@ -127,11 +117,9 @@ SELECT
   'group-by-ref-type' as "iconId",
   catalog_name as "database",
   ${p => p.linkedserver ? `'${p.linkedserver}'` : 'NULL'} AS linkedserver
-FROM ${p => p.linkedserver 
-  ? `[${p.linkedserver}].[${p.database}].information_schema.schemata` 
-  : (p.database 
-      ? `${escapeTableName({ database: p.database, schema: "information_schema", label: "schemata" })}` 
-      : 'information_schema.schemata')}
+FROM ${p => p.linkedserver || p.database
+         ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "information_schema", label: "schemata" })}` 
+         : 'information_schema.schemata'}
 WHERE
   LOWER(schema_name) NOT IN ('information_schema', 'sys', 'guest')
   AND LOWER(schema_name) NOT LIKE 'db\\_%' ESCAPE '\\'
@@ -148,11 +136,9 @@ SELECT DISTINCT
   'group-by-ref-type' as "iconId",
   '${p => p.database}' as "database",
   ${p => p.linkedserver ? `'${p.linkedserver}'` : 'NULL'} AS linkedserver
-FROM ${p => p.linkedserver
-  ? `[${p.linkedserver}].[${p.database}].INFORMATION_SCHEMA.TABLES` 
-  : (p.database 
-      ? `${escapeTableName({ database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLES" })}` 
-      : 'INFORMATION_SCHEMA.TABLES')} AS T
+FROM ${p => p.linkedserver || p.database
+         ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "INFORMATION_SCHEMA", label: "TABLES" })}` 
+         : 'INFORMATION_SCHEMA.TABLES'} AS T
 WHERE
   T.TABLE_CATALOG = '${p => p.database}'
   AND LOWER(T.TABLE_SCHEMA) NOT LIKE 'db\\_%' ESCAPE '\\'
@@ -323,8 +309,52 @@ export const fetchSynonyms: IBaseQueries['fetchSynonyms'] =  queryFactory`
 SELECT name AS label,
   'connection.synonym' as "type",
   'copy' as "iconId"
-FROM ${p => p.database ? `${p.database}.sys.synonyms` : 'sys.synonyms'}
+FROM ${p => p.linkedserver || p.database
+         ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "sys", label: "synonyms" })}` 
+         : 'sys.synonyms'}
 ORDER BY name;
+`;
+
+export const fetchTriggersTable: IBaseQueries['fetchTriggersTable'] = queryFactory`
+SELECT DISTINCT t.name                                          AS label
+              , s.name                                          AS "schema"
+              , ${p => p.database ? `'${p.database}'` : 'NULL'} AS "database"
+              , 'connection.triggerstable'                      AS "type"
+              , 'folder'                                        AS "iconId"
+FROM            ${p => p.linkedserver || p.database
+                    ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "sys", label: "sysobjects" })}` 
+                    : 'sys.sysobjects'}
+INNER JOIN      ${p => p.linkedserver || p.database
+                    ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "sys", label: "tables" })}` 
+                    : 'sys.tables'}     t ON sysobjects.parent_obj = t.object_id
+INNER JOIN      ${p => p.linkedserver || p.database
+                    ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "sys", label: "schemas" })}` 
+                    : 'sys.schemas'}    s ON t.schema_id = s.schema_id
+WHERE           sysobjects.type = 'TR'
+AND             s.name = '${p => p.schema}'
+ORDER BY        t.name
+`;
+
+export const fetchTriggers: IBaseQueries['fetchTriggers'] = queryFactory`
+SELECT DISTINCT sysobjects.name            AS label
+              , s.name                     AS "schema"
+              , t.name                     AS "table_name"
+              , 'connection.triggers'      AS "type"
+              , 'symbol-event'             AS "iconId"
+              , '${ContextValue.NO_CHILD}' AS "childType"
+FROM            ${p => p.linkedserver || p.database
+                    ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "sys", label: "sysobjects" })}` 
+                    : 'sys.sysobjects'}
+INNER JOIN      ${p => p.linkedserver || p.database
+                    ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "sys", label: "tables" })}` 
+                    : 'sys.tables'}     t ON sysobjects.parent_obj = t.object_id
+INNER JOIN      ${p => p.linkedserver || p.database
+                    ? `${escapeTableName({ linkedserver: p.linkedserver, database: p.database, schema: "sys", label: "schemas" })}` 
+                    : 'sys.schemas'}    s ON t.schema_id = s.schema_id
+WHERE           sysobjects.type = 'TR'
+AND             s.name = '${p => p.schema}'
+AND             t.name = '${p => p.label}'
+ORDER BY        sysobjects.name
 `;
 
 export const fetchUsers: IBaseQueries['fetchUsers'] =  queryFactory`
@@ -374,20 +404,20 @@ EXEC sp_tables_ex @table_server = '${p => p.label}',
 export const fetchLinkedServerTables: IBaseQueries['fetchLinkedServerTables'] = queryFactory`
 EXEC sp_tables_ex @table_server = '${p => p.linkedserver}',
                   @table_schema = '${p => p.schema}',
-                  ${p => (p.database && p.database !== 'null') ? `@table_catalog = '${p.database}',`: ''}
+                  ${p => p.database ? `@table_catalog = '${p.database}',`: ''}
                   @table_type = 'TABLE'
 `;
 
 export const fetchLinkedServerViews: IBaseQueries['fetchLinkedServerViews'] = queryFactory`
 EXEC sp_tables_ex @table_server = '${p => p.linkedserver}',
                   @table_schema = '${p => p.schema}',
-                  ${p => (p.database && p.database !== 'null') ? `@table_catalog = '${p.database}',`: ''}
+                  ${p => p.database ? `@table_catalog = '${p.database}',`: ''}
                   @table_type = 'VIEW'
 `;
 
 export const fetchLinkedServerColumns: IBaseQueries['fetchLinkedServerColumns'] = queryFactory`
 EXEC sp_columns_ex @table_server = '${p => p.linkedserver}',
                    @table_name = '${p => p.label}',
-                   ${p => (p.database && p.database !== 'null') ? `@table_catalog = '${p.database}',`: ''}
+                   ${p => p.database ? `@table_catalog = '${p.database}',`: ''}
                    @table_schema = '${p => p.schema}'
 `

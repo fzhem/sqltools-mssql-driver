@@ -414,6 +414,60 @@ export default class MSSQL
         ]);
       case ContextValue.TABLE:
       case ContextValue.VIEW:
+        if (item.linkedserver) {
+          let fallbackColumnResult = await this.queryResults(
+            this.queries.fetchLinkedServerColumns(item)
+          );
+          if (fallbackColumnResult.length === 0) {
+            try {
+              const showRecordsResult = await this.showRecords(item, {
+                limit: 1,
+              });
+              if (showRecordsResult.length === 0) {
+                return [];
+              }
+              const distinctColumns = Object.keys(
+                showRecordsResult[0].results[0]
+              );
+              return distinctColumns.map((key) => ({
+                label: key,
+                type: ContextValue.COLUMN,
+                table: item.label,
+                dataase: item.database,
+                schema: item.schema,
+                childType: ContextValue.NO_CHILD,
+              }));
+            } catch (error) {
+              this.close();
+              return [];
+            }
+          }
+          fallbackColumnResult = fallbackColumnResult.filter(
+            (column) =>
+              column.TYPE_NAME !== "INTERVAL YEAR TO MONTH" &&
+              column.TYPE_NAME !== "INTERVAL DAY TO SECOND"
+          );
+          const transformedColumns = fallbackColumnResult.map((column) => {
+            const detail = column.CHAR_OCTET_LENGTH
+              ? `${column.TYPE_NAME}(${column.CHAR_OCTET_LENGTH})`
+              : column.TYPE_NAME;
+
+            return {
+              label: column.COLUMN_NAME,
+              type: "connection.fallbackColumn",
+              table: column.TABLE_NAME,
+              dataType: column.TYPE_NAME,
+              detail: detail,
+              database: column.TABLE_CAT,
+              schema: column.TABLE_SCHEM,
+              isNullable: column.IS_NULLABLE,
+              iconId: "symbol-field",
+              childType: ContextValue.NO_CHILD,
+            };
+          });
+
+          return transformedColumns;
+        }
         return this.getColumns(item as NSDatabase.ITable);
       case ContextValue.DATABASE:
         return <MConnectionExplorer.IChildItem[]>[
@@ -445,6 +499,12 @@ export default class MSSQL
             type: ContextValue.RESOURCE_GROUP,
             iconId: "folder",
             childType: ContextValue.VIEW,
+          },
+          {
+            label: "Triggers",
+            type: ContextValue.RESOURCE_GROUP,
+            iconId: "folder",
+            childType: "connection.triggerstable",
           },
         ];
       case ContextValue.FUNCTION:
@@ -485,6 +545,15 @@ export default class MSSQL
           this.close();
           return [];
         }
+      case "connection.triggerstable":
+        try {
+          return await this.queryResults(
+            this.queries.fetchTriggers(item as NSDatabase.ITable)
+          );
+        } catch (error) {
+          this.close();
+          return [];
+        }
       case "connection.linkedServers":
         try {
           const result = await this.queryResults(
@@ -514,7 +583,10 @@ export default class MSSQL
               )
             ).map((item) => {
               const [TABLE_CAT, TABLE_SCHEM] = item.split(":");
-              return { TABLE_CAT, TABLE_SCHEM };
+              return {
+                TABLE_CAT: TABLE_CAT === "null" ? null : TABLE_CAT,
+                TABLE_SCHEM,
+              };
             });
             const fallbackDatabases = distinctValues.map((out) => ({
               label: out.TABLE_CAT,
@@ -576,45 +648,15 @@ export default class MSSQL
             label: "Tables",
             type: ContextValue.RESOURCE_GROUP,
             iconId: "folder",
-            childType: "connection.fallbackTable",
+            childType: ContextValue.TABLE,
           },
           {
             label: "Views",
             type: ContextValue.RESOURCE_GROUP,
             iconId: "folder",
-            childType: "connection.fallbackView",
+            childType: ContextValue.VIEW,
           },
         ];
-      case "connection.fallbackTable":
-      case "connection.fallbackView":
-        let fallbackColumnResult = await this.queryResults(
-          this.queries.fetchLinkedServerColumns(item)
-        );
-        fallbackColumnResult = fallbackColumnResult.filter(
-          (column) =>
-            column.TYPE_NAME !== "INTERVAL YEAR TO MONTH" &&
-            column.TYPE_NAME !== "INTERVAL DAY TO SECOND"
-        );
-        const transformedColumns = fallbackColumnResult.map((column) => {
-          const detail = column.CHAR_OCTET_LENGTH
-            ? `${column.TYPE_NAME}(${column.CHAR_OCTET_LENGTH})`
-            : column.TYPE_NAME;
-
-          return {
-            label: column.COLUMN_NAME,
-            type: "connection.fallbackColumn",
-            table: column.TABLE_NAME,
-            dataType: column.TYPE_NAME,
-            detail: detail,
-            database: column.TABLE_CAT,
-            schema: column.TABLE_SCHEM,
-            isNullable: column.IS_NULLABLE,
-            iconId: "symbol-field",
-            childType: ContextValue.NO_CHILD,
-          };
-        });
-
-        return transformedColumns;
     }
     return [];
   }
@@ -637,16 +679,22 @@ export default class MSSQL
     table: NSDatabase.ITable,
     opt: IQueryOptions & { limit: number; page?: number }
   ) {
-    const sqlServerVersionQuery = table.linkedserver
-      ? await this.query(
-          `SELECT * FROM OPENQUERY(${table.linkedserver}, 'SELECT SERVERPROPERTY(''productversion'') AS Version')`,
-          {}
-        )
-      : await this.query(
-          "SELECT SERVERPROPERTY('ProductVersion') AS Version",
-          {}
-        );
-    const sqlServerVersion = sqlServerVersionQuery[0].results[0].Version;
+    let sqlServerVersion: string;
+    try {
+      const sqlServerVersionQuery = table.linkedserver
+        ? await this.query(
+            `SELECT * FROM OPENQUERY(${table.linkedserver}, 'SELECT SERVERPROPERTY(''productversion'') AS Version')`,
+            {}
+          )
+        : await this.query(
+            "SELECT SERVERPROPERTY('ProductVersion') AS Version",
+            {}
+          );
+      sqlServerVersion = sqlServerVersionQuery[0].results[0].Version;
+    } catch (error) {
+      sqlServerVersion = "0.0.0.0";
+    }
+
     // SQL Server 2012 added support for OFFSET
     if (this.compareVersions(sqlServerVersion, "11.0.1103.9")) {
       return super.showRecords(table, opt);
@@ -684,10 +732,44 @@ export default class MSSQL
           }
         }
       case ContextValue.TABLE:
+        if (parent.linkedserver) {
+          const resultsFallbackTables = await this.queryResults(
+            this.queries.fetchLinkedServerTables(parent)
+          );
+          const transformedResultsFallbackTables = resultsFallbackTables.map(
+            (out) => ({
+              label: out.TABLE_NAME,
+              database: out.TABLE_CAT,
+              schema: out.TABLE_SCHEM,
+              type: ContextValue.TABLE,
+              isView: 0,
+              linkedserver: parent.linkedserver,
+              iconName: "table",
+            })
+          );
+          return transformedResultsFallbackTables;
+        }
         return this.queryResults(
           this.queries.fetchTables(parent as NSDatabase.ISchema)
         );
       case ContextValue.VIEW:
+        if (parent.linkedserver) {
+          const resultsFallbackViews = await this.queryResults(
+            this.queries.fetchLinkedServerViews(parent)
+          );
+          const transformedResultsFallbackViews = resultsFallbackViews.map(
+            (out) => ({
+              label: out.TABLE_NAME,
+              database: out.TABLE_CAT,
+              schema: out.TABLE_SCHEM,
+              type: ContextValue.VIEW,
+              isView: 1,
+              linkedserver: parent.linkedserver,
+              iconName: "view",
+            })
+          );
+          return transformedResultsFallbackViews;
+        }
         return this.queryResults(
           this.queries.fetchViews(parent as NSDatabase.ISchema)
         );
@@ -712,6 +794,15 @@ export default class MSSQL
           this.close();
           return [];
         }
+      case "connection.triggerstable":
+        try {
+          return await this.queryResults(
+            this.queries.fetchTriggersTable(parent as NSDatabase.ISchema)
+          );
+        } catch (error) {
+          this.close();
+          return [];
+        }
       case "connection.users":
         const resultsUsers = await this.queryResults(this.queries.fetchUsers());
         return resultsUsers.map((col) => ({
@@ -726,38 +817,6 @@ export default class MSSQL
           ...col,
           childType: ContextValue.NO_CHILD,
         }));
-      case "connection.fallbackTable":
-        const resultsFallbackTables = await this.queryResults(
-          this.queries.fetchLinkedServerTables(parent)
-        );
-        const transformedResultsFallbackTables = resultsFallbackTables.map(
-          (out) => ({
-            label: out.TABLE_NAME,
-            database: out.TABLE_CAT,
-            schema: out.TABLE_SCHEM,
-            type: "connection.fallbackTable",
-            isView: 0,
-            linkedserver: parent.linkedserver,
-            iconName: "table",
-          })
-        );
-        return transformedResultsFallbackTables;
-      case "connection.fallbackView":
-        const resultsFallbackViews = await this.queryResults(
-          this.queries.fetchLinkedServerViews(parent)
-        );
-        const transformedResultsFallbackViews = resultsFallbackViews.map(
-          (out) => ({
-            label: out.TABLE_NAME,
-            database: out.TABLE_CAT,
-            schema: out.TABLE_SCHEM,
-            type: "connection.fallbackView",
-            isView: 1,
-            linkedserver: parent.linkedserver,
-            iconName: "view",
-          })
-        );
-        return transformedResultsFallbackViews;
     }
     return [];
   }

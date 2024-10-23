@@ -1,5 +1,5 @@
-### Future version(s)
-- Add triggers in side panel
+### 0.5.9
+- Add triggers in side panel (check under schemas in side panel)
 - Fix non-SQL Server linked server show records button in side panel
 
 ### 0.5.8

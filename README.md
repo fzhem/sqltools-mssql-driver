@@ -12,9 +12,9 @@ This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscod
 - This happens when you are using a different Node version from `How to activate?` step 1.
 - (IMPORTANT!) Close VSCode
 - Go to your extension directory
-    - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.5.7`
-    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.7`
-    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.7`
+    - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.5.9`
+    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.9`
+    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.5.9`
 - Run `npm install msnodesqlv8@4.2.1` in your terminal.
     - Alternatively you can run `npm rebuild` but that may require additional libraries.
 

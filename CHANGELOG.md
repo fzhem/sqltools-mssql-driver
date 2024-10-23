@@ -1,3 +1,6 @@
+### 0.6.0
+- Fix Add New Connection UI being same as the official driver, fixing [#4](https://github.com/fzhem/sqltools-mssql-driver-commver/issues/4)
+
 ### 0.5.9
 - Add triggers in side panel (check under schemas in side panel)
 - Fix non-SQL Server linked server show records button in side panel

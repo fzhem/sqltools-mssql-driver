@@ -11,14 +11,12 @@ jobs:
       contents: write # for creating release
     name: Create release and ubuntu build
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
 
@@ -32,6 +30,15 @@ jobs:
       - name: Get package name (Ubuntu)
         id: get_package_name_ubuntu
         run: echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
+
+      - name: Download msnodesqlv8 node files
+        run: node download-msnodesqlv8-node-files.js
+
+      - name: Delete redundant sqlserverv8.node file
+        run : node delete-sqlserverv8.js
+      
+      - name: Copy util file
+        run: node copy-util-file.js
 
       - name: Build extension
         run: npm run prepackage
@@ -55,28 +62,15 @@ jobs:
           mv "$old_name" "releases/$new_name"
           echo "new_name=$new_name" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create GitHub Release and Upload VSIX (Ubuntu)
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}
-          release_name: ${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}
-          body: |
-            Release created automatically from workflow.
-          draft: true
-          prerelease: true
-
-      - name: Upload VSIX file as release asset (Ubuntu)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: releases/${{ steps.rename_vsix_ubuntu.outputs.new_name }}
-          asset_name: ${{ steps.get_package_name_ubuntu.outputs.name }}-linux-x64-${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}.vsix
-          asset_content_type: application/zip
+          files: |
+            releases/${{ steps.rename_vsix_ubuntu.outputs.new_name }}
+          body: Release created automatically from workflow.
+          tag_name: '${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}'
   build:
     permissions:
       contents: write # for creating release
@@ -90,10 +84,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
 
@@ -111,6 +105,15 @@ jobs:
 
       - name: Install npm dependencies
         run: npm install
+
+      - name: Download msnodesqlv8 node files
+        run: node download-msnodesqlv8-node-files.js
+
+      - name: Delete redundant sqlserverv8.node file
+        run : node delete-sqlserverv8.js
+      
+      - name: Copy util file
+        run: node copy-util-file.js
 
       - name: Get package version (Windows)
         id: get_package_version_windows
@@ -178,26 +181,24 @@ jobs:
           echo "new_name=$new_name" >> $GITHUB_OUTPUT
 
       - name: Upload VSIX file as release asset (Windows)
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(matrix.os, 'windows')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.once.outputs.upload_url }}
-          asset_path: releases/${{ steps.rename_vsix_windows.outputs.new_name }}
-          asset_name: ${{ steps.get_package_name_windows.outputs.name }}-win32-x64-${{ steps.get_package_version_windows.outputs.version }}-${{ steps.get_commit_hash_windows.outputs.hash }}.vsix
-          asset_content_type: application/zip
+          files: |
+            releases/${{ steps.rename_vsix_windows.outputs.new_name }}
+          tag_name: '${{ steps.get_package_version_windows.outputs.version }}-${{ steps.get_commit_hash_windows.outputs.hash }}'
 
       - name: Upload VSIX file as release asset (Mac OS)
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(matrix.os, 'macos')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.once.outputs.upload_url }}
-          asset_path: releases/${{ steps.rename_vsix_macos.outputs.new_name }}
-          asset_name: ${{ steps.get_package_name_macos.outputs.name }}-darwin-x64-${{ steps.get_package_version_macos.outputs.version }}-${{ steps.get_commit_hash_macos.outputs.hash }}.vsix
-          asset_content_type: application/zip
-    
+          files: |
+            releases/${{ steps.rename_vsix_macos.outputs.new_name }}
+          tag_name: '${{ steps.get_package_version_macos.outputs.version }}-${{ steps.get_commit_hash_macos.outputs.hash }}'
+
       - name: Display success message
         run: echo "Extension packaging complete and release created with asset uploaded."

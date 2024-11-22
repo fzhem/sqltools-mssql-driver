@@ -1,3 +1,6 @@
+### 0.6.1
+- Support Node versions 20-24
+
 ### 0.6.0
 - Fix Add New Connection UI being same as the official driver, fixing [#4](https://github.com/fzhem/sqltools-mssql-driver-commver/issues/4)
 

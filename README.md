@@ -5,17 +5,18 @@ This is a fork of the [Microsoft SQL Server/Azure](https://github.com/mtxr/vscod
 *This includes both the tedious driver (part of the Official driver) and the msnodesqlv8 driver, the latter of which introduces **Windows Authentication** support.*
 
 ## How to activate?
-1. Install [Node.js v20](https://nodejs.org/en)
+1. Install latest [Node LTS version](https://nodejs.org/en)
+    - Node versions >= 20 are supported
 2. Set `sqltools.useNodeRuntime` to `true` in settings.
 
 ### ⚠️ Module did not self-register error when connecting ⚠️ :
 - This happens when you are using a different Node version from `How to activate?` step 1.
 - (IMPORTANT!) Close VSCode
 - Go to your extension directory
-    - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.6.0`
-    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.6.0`
-    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.6.0`
-- Run `npm install msnodesqlv8@4.2.1` in your terminal.
+    - Windows: `%USERPROFILE%\.vscode\extensions\fzhem.sqltools-driver-mssql-commver-0.6.1`
+    - Linux: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.6.1`
+    - Mac OS: `~/.vscode/extensions/fzhem.sqltools-driver-mssql-commver-0.6.1`
+- Run `npm install msnodesqlv8@4.4.0` in your terminal.
     - Alternatively you can run `npm rebuild` but that may require additional libraries.
 
 ## Features and Fixes

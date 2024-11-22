@@ -5,7 +5,13 @@ const tar = require('tar');
 
 // Define parameters
 const supportedVersions = [115, 120, 127, 131];
-const version = '4.4.0'; // Set the desired msnodesqlv8 version
+// Read the package.json file
+const packageJsonPath = path.join(__dirname, 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+// Extract the msnodesqlv8 version
+const msnodesqlv8Version = packageJson.dependencies['msnodesqlv8'];
+const version = msnodesqlv8Version.replace('^', '');
 const platform = process.platform;
 const arch = process.arch;
 const baseUrl = `https://github.com/TimelordUK/node-sqlserver-v8/releases/download/v${version}`;

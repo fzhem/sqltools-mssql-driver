@@ -4,7 +4,7 @@
   "description": "SQLTools Microsoft SQL Server/Azure+",
   "version": "0.6.1",
   "engines": {
-    "vscode": "^1.82.0"
+    "vscode": "^1.91.0"
   },
   "publisher": "fzhem",
   "license": "MIT",
@@ -70,7 +70,7 @@
     "@types/lodash": "^4.17.13",
     "@types/mssql": "^9.1.5",
     "@types/uuid": "^10.0.0",
-    "@types/vscode": "^1.82.0",
+    "@types/vscode": "^1.91.0",
     "@vscode/vsce": "^3.2.1",
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",

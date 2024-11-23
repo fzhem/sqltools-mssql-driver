@@ -4,7 +4,9 @@ const path = require('path');
 const tar = require('tar');
 
 // Define parameters
-const supportedVersions = [115, 120, 127, 131];
+const supportedNodeVersions = [115, 120, 127, 131];
+const supportedElectronVersions = [121, 123, 125, 128];
+
 // Read the package.json file
 const packageJsonPath = path.join(__dirname, 'package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
@@ -52,54 +54,61 @@ const downloadFile = (url, destination, redirectCount = 0) => {
 
 // Function to extract the .tar.gz file
 const extractTarGz = (filePath, extractTo) => {
-    // Ensure the target extraction directory exists
-    if (!fs.existsSync(extractTo)) {
-      fs.mkdirSync(extractTo, { recursive: true });
-    }
-  
-    return tar.x({
-      file: filePath,
-      cwd: extractTo, // Extract to the specified directory
-    });
-  };
-  
-
-// Iterate over each supported version
-supportedVersions.forEach(async (moduleVersion) => {
-  const fileName = `msnodesqlv8-v${version}-node-v${moduleVersion}-${platform}-${arch}.tar.gz`;
-  const fileUrl = `${baseUrl}/${fileName}`;
-  const filePath = path.join(__dirname, fileName);
-  const tempExtractDir = path.join(__dirname, `temp_v${moduleVersion}`);
-
-  try {
-    // Download the .tar.gz file
-    console.log(`Attempting to download: ${fileName}`);
-    await downloadFile(fileUrl, filePath);
-    console.log(`Downloaded: ${fileName} to ${filePath}`);
-
-    // Extract the .tar.gz to a temporary directory
-    console.log(`Extracting ${fileName} to ${tempExtractDir}`);
-    await extractTarGz(filePath, tempExtractDir);
-
-    // Copy the extracted sqlserverv8.node file to the target directory
-    const extractedFilePath = path.join(tempExtractDir, 'build', 'Release', 'sqlserverv8.node');
-    const targetDir = path.join(targetBaseDir, `v${moduleVersion}`);
-    const targetFilePath = path.join(targetDir, 'sqlserverv8.node');
-
-    // Create target directory if it doesn't exist
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-
-    // Copy the node file to the target directory
-    fs.copyFileSync(extractedFilePath, targetFilePath);
-    console.log(`Copied sqlserverv8.node to ${targetFilePath}`);
-
-    // Clean up temporary files
-    fs.rmSync(tempExtractDir, { recursive: true, force: true });
-    fs.unlinkSync(filePath);
-    console.log(`Cleaned up temporary files for v${moduleVersion}`);
-  } catch (error) {
-    console.error(`Error processing version v${moduleVersion}: ${error.message}`);
+  // Ensure the target extraction directory exists
+  if (!fs.existsSync(extractTo)) {
+    fs.mkdirSync(extractTo, { recursive: true });
   }
-});
+
+  return tar.x({
+    file: filePath,
+    cwd: extractTo, // Extract to the specified directory
+  });
+};
+
+// Helper function to download and extract files for given versions
+const processVersions = async (versions, type) => {
+  for (const moduleVersion of versions) {
+    const fileName = `msnodesqlv8-v${version}-${type}-v${moduleVersion}-${platform}-${arch}.tar.gz`;
+    const fileUrl = `${baseUrl}/${fileName}`;
+    const filePath = path.join(__dirname, fileName);
+    const tempExtractDir = path.join(__dirname, `temp_${type}_v${moduleVersion}`);
+
+    try {
+      // Download the .tar.gz file
+      console.log(`Attempting to download: ${fileName}`);
+      await downloadFile(fileUrl, filePath);
+      console.log(`Downloaded: ${fileName} to ${filePath}`);
+
+      // Extract the .tar.gz to a temporary directory
+      console.log(`Extracting ${fileName} to ${tempExtractDir}`);
+      await extractTarGz(filePath, tempExtractDir);
+
+      // Copy the extracted sqlserverv8.node file to the target directory
+      const extractedFilePath = path.join(tempExtractDir, 'build', 'Release', 'sqlserverv8.node');
+      const targetDir = path.join(targetBaseDir, `v${moduleVersion}`);
+      const targetFilePath = path.join(targetDir, 'sqlserverv8.node');
+
+      // Create target directory if it doesn't exist
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      // Copy the node file to the target directory
+      fs.copyFileSync(extractedFilePath, targetFilePath);
+      console.log(`Copied sqlserverv8.node to ${targetFilePath}`);
+
+      // Clean up temporary files
+      fs.rmSync(tempExtractDir, { recursive: true, force: true });
+      fs.unlinkSync(filePath);
+      console.log(`Cleaned up temporary files for ${type} v${moduleVersion}`);
+    } catch (error) {
+      console.error(`Error processing ${type} version v${moduleVersion}: ${error.message}`);
+    }
+  }
+};
+
+// Process both Node and Electron versions
+(async () => {
+  await processVersions(supportedNodeVersions, 'node');
+  await processVersions(supportedElectronVersions, 'electron');
+})();

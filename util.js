@@ -8,20 +8,16 @@ const utilModule = ((() => {
   const platform = process.platform; // Platform (e.g., 'win32', 'linux')
   const arch = process.arch; // Architecture (e.g., 'x64', 'arm64')
 
-  // Determine the folder name based on module version
-  let folder;
+  const supportedVersions = [131, 128, 127, 125, 123, 121, 120, 115];
 
-  if (moduleVersion >= 131) {
-    folder = `v131`;
-  } else if (moduleVersion >= 127) {
-    folder = `v127`;
-  } else if (moduleVersion >= 120) {
-    folder = `v120`;
-  } else if (moduleVersion >= 115) {
-    folder = `v115`;
-  } else {
-    throw new Error(`Unsupported Node.js module version: ${moduleVersion} (Node.js version: ${nodeVersion}, Platform: ${platform}, Architecture: ${arch})`);
+  // Find the highest supported version that is <= moduleVersion
+  const folderVersion = supportedVersions.find(version => moduleVersion >= version);
+
+  if (!folderVersion) {
+    throw new Error(`Unsupported module version: ${moduleVersion} (Node.js version: ${nodeVersion}, Platform: ${platform}, Architecture: ${arch})`);
   }
+
+  const folder = `v${folderVersion}`;
 
   // Load the native module from the dynamically constructed path
   const cppDriver = require(`../build/Release/${folder}/sqlserverv8.node`);

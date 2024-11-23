@@ -1,5 +1,8 @@
+### 0.6.2
+- Support vscode versions >= 1.91.0, no need to set sqltools.useNodeRuntime now!
+
 ### 0.6.1
-- Support Node versions 20-24
+- Support Node versions 20-23
 
 ### 0.6.0
 - Fix Add New Connection UI being same as the official driver, fixing [#4](https://github.com/fzhem/sqltools-mssql-driver-commver/issues/4)

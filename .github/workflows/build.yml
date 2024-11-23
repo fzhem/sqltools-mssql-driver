@@ -70,6 +70,7 @@ jobs:
           files: |
             releases/${{ steps.rename_vsix_ubuntu.outputs.new_name }}
           body: Release created automatically from workflow.
+          draft: true
           tag_name: '${{ steps.get_package_version_ubuntu.outputs.version }}-${{ steps.get_commit_hash_ubuntu.outputs.hash }}'
   build:
     permissions:

@@ -189,6 +189,7 @@ jobs:
         with:
           files: |
             releases/${{ steps.rename_vsix_windows.outputs.new_name }}
+          draft: true
           tag_name: '${{ steps.get_package_version_windows.outputs.version }}-${{ steps.get_commit_hash_windows.outputs.hash }}'
 
       - name: Upload VSIX file as release asset (Mac OS)
@@ -199,6 +200,7 @@ jobs:
         with:
           files: |
             releases/${{ steps.rename_vsix_macos.outputs.new_name }}
+          draft: true
           tag_name: '${{ steps.get_package_version_macos.outputs.version }}-${{ steps.get_commit_hash_macos.outputs.hash }}'
 
       - name: Display success message

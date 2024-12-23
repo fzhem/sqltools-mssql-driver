@@ -84,6 +84,11 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
       return formData;
     },
     resolveConnection: async ({ connInfo }) => {
+      if (connInfo.dbDriver === 'mssqlnodev8') {
+        if (!['win32', 'linux', 'darwin'].includes(process.platform) && process.arch === 'x64') {
+          throw new Error(`msnodesqlv8 does not support ${process.platform}-${process.arch}. Supported: (win32|linux|darwin)-x64. Use tedious TDS driver for broader compatibility.`);
+        }
+      }
       if (connInfo.password === undefined && !connInfo.askForPassword && !connInfo.connectString && connInfo.connectionMethod !== "Integrated") {
         const scopes = [connInfo.name, (connInfo.username || "")];
         let session = await authentication.getSession(
